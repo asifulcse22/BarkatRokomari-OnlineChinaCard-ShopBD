@@ -1,0 +1,7 @@
+{
+  "name": "ShopZone",
+  "description": "ShopZone - Multi-Category Modern E-Commerce Platform with AI Business Center, smart shopping, and real-time inventory management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
