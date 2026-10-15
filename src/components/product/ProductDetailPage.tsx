@@ -38,7 +38,7 @@ export const ProductDetailPage: React.FC = () => {
     product?.variations?.colors?.[0]?.name
   );
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<'details' | 'specs' | 'reviews'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'specs' | 'setup' | 'reviews'>('details');
 
   // Review form state
   const [newReviewAuthor, setNewReviewAuthor] = useState('');
@@ -195,24 +195,34 @@ export const ProductDetailPage: React.FC = () => {
               <span className="text-xs text-emerald-600 font-semibold">{product.salesCount} sold</span>
             </div>
 
-            {/* Price section */}
-            <div className="flex items-baseline gap-3 p-4 bg-slate-50 rounded-2xl mb-6">
-              <span className="text-3xl font-extrabold text-blue-600 font-mono">
-                ৳{(product.salePrice || product.regularPrice).toLocaleString()}
-              </span>
-              {product.salePrice && (
-                <>
-                  <span className="text-base text-slate-400 line-through">
-                    ৳{product.regularPrice.toLocaleString()}
-                  </span>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                    Save {discountPercent}% Instant
-                  </span>
-                </>
-              )}
+            {/* Price section with Bengali savings highlight */}
+            <div className="p-4 bg-gradient-to-r from-violet-50/80 via-blue-50/50 to-orange-50/40 rounded-2xl border border-violet-100 mb-6 space-y-2">
+              <div className="flex flex-wrap items-baseline gap-3">
+                <span className="text-3xl font-black text-violet-700 font-mono tracking-tight">
+                  ৳{(product.salePrice || product.regularPrice).toLocaleString()}
+                </span>
+                {product.salePrice && product.salePrice < product.regularPrice && (
+                  <>
+                    <span className="text-base text-slate-400 line-through font-mono">
+                      ৳{product.regularPrice.toLocaleString()}
+                    </span>
+                    <span className="text-xs font-bold text-rose-700 bg-rose-100/90 px-2.5 py-1 rounded-lg border border-rose-200">
+                      মূল্য ছাড়: ৳{(product.regularPrice - product.salePrice).toLocaleString()} টাকা
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] font-semibold text-slate-600">
+                <span className="bg-emerald-100/80 text-emerald-800 px-2 py-0.5 rounded-md">
+                  ✓ অফার মূল্য চলমান
+                </span>
+                <span className="bg-blue-100/80 text-blue-800 px-2 py-0.5 rounded-md">
+                  ✓ ক্যাশ অন ডেলিভারি প্রযোজ্য
+                </span>
+              </div>
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed mb-6">{product.description}</p>
+            <p className="text-xs text-slate-700 leading-relaxed mb-6 font-medium whitespace-pre-line">{product.description}</p>
 
             {/* Color Swatches */}
             {product.variations?.colors && product.variations.colors.length > 0 && (
@@ -367,7 +377,20 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Product Overview
+            পণ্য বিবরণী (Overview)
+          </button>
+          <button
+            onClick={() => setActiveTab('setup')}
+            className={`pb-3 text-xs font-bold transition-colors border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'setup'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <span>সেটআপ গাইড (Setup Guide)</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-violet-100 text-[10px] text-violet-700 font-bold">
+              সহজ নির্দেশিকা
+            </span>
           </button>
           <button
             onClick={() => setActiveTab('specs')}
@@ -377,7 +400,7 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Technical Specifications ({product.specifications?.length || 0})
+            স্পেসিফিকেশন ({product.specifications?.length || 0})
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
@@ -387,7 +410,7 @@ export const ProductDetailPage: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            <span>Verified Reviews</span>
+            <span>কাস্টমার রিভিউ</span>
             <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] text-slate-600 font-semibold">
               {productReviews.length}
             </span>
@@ -397,15 +420,45 @@ export const ProductDetailPage: React.FC = () => {
         {/* Tab 1: Overview */}
         {activeTab === 'details' && (
           <div className="space-y-4 max-w-3xl text-xs text-slate-600 leading-relaxed">
-            <h3 className="text-sm font-bold text-slate-900">Engineered for Daily Excellence</h3>
-            <p>{product.description}</p>
-            <p>
-              Every unit goes through stringent quality assessment and authentication before packing. Delivered securely with tamper-evident packaging and comprehensive merchant warranty.
-            </p>
+            <h3 className="text-sm font-bold text-slate-900">অরিজিনাল ও প্রিমিয়াম কোয়ালিটি পণ্য</h3>
+            <p className="whitespace-pre-line text-slate-700 leading-relaxed font-medium">{product.description}</p>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-1">
+              <p className="font-bold text-slate-800">✓ ডেলিভারি ও ওয়ারেন্টি:</p>
+              <p>প্রতিটি পণ্য ডেলিভারির পূর্বে নিখুঁতভাবে টেস্ট ও ভেরিফাই করে পাঠানো হয়। প্যাকেটে কোনো সমস্যা পেলে ৭ দিনের মধ্যে এক্সচেঞ্জ সুবিধা রয়েছে।</p>
+            </div>
           </div>
         )}
 
-        {/* Tab 2: Specifications */}
+        {/* Tab 2: Setup Guide */}
+        {activeTab === 'setup' && (
+          <div className="max-w-3xl space-y-4">
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-violet-50 to-blue-50 border border-violet-100">
+              <h3 className="text-sm font-extrabold text-violet-950 mb-2 flex items-center gap-2">
+                <span>🛠️ পণ্যটি কিভাবে সেটআপ ও ব্যবহার করবেন:</span>
+              </h3>
+              {product.setupGuide ? (
+                <div className="space-y-3 mt-3">
+                  {product.setupGuide.split('\n').filter(Boolean).map((step, idx) => (
+                    <div key={idx} className="flex items-start gap-3 bg-white/90 p-3.5 rounded-xl border border-violet-100/80 shadow-xs">
+                      <span className="w-6 h-6 rounded-lg bg-violet-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                        {step.replace(/^[০-৯\d]+\.\s*/, '')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  পণ্যটি সাধারণ প্লাগ অ্যান্ড প্লে সুবিধার। প্যাকেট খুলে সাথে দেওয়া ইউজার ম্যানুয়াল অনুযায়ী সহজে ব্যবহার করতে পারবেন। যেকোনো প্রয়োজনে আমাদের হটলাইনে যোগাযোগ করুন।
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Specifications */}
         {activeTab === 'specs' && (
           <div className="max-w-2xl">
             <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">

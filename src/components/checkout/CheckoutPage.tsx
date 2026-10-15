@@ -1,23 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { PaymentMethod } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 import {
-  CreditCard,
   ShieldCheck,
-  Truck,
-  CheckCircle2,
   Tag,
   ArrowLeft,
   Lock,
-  Smartphone,
-  Building,
-  DollarSign,
 } from 'lucide-react';
 
 export const CheckoutPage: React.FC = () => {
   const {
     cart,
     products,
+    orders,
     cartSubtotal,
     cartDiscount,
     cartShippingFee,
@@ -27,32 +23,49 @@ export const CheckoutPage: React.FC = () => {
     removeCoupon,
     placeOrder,
     setActiveCustomerPage,
+    setQuickViewProduct,
     showToast,
   } = useStore();
 
+  // আগের অর্ডার থাকলে সেই কাস্টমারের তথ্য অটো-ফিল হবে, না থাকলে ফর্ম খালি থাকবে।
+  const { user, loading: authLoading, openAuth } = useAuth();
+  const lastCustomer = orders.find((o) => user && o.customer.email?.toLowerCase() === user.email.toLowerCase())?.customer;
+
   // Customer Form State
   const [formData, setFormData] = useState({
-    name: 'Rahim Chowdhury',
-    email: 'rahim.c@example.com',
-    phone: '+880 1712-345678',
-    address: 'House 42, Road 11, Banani',
-    city: 'Dhaka',
-    postalCode: '1213',
-    country: 'Bangladesh',
+    name: lastCustomer?.name ?? user?.name ?? '',
+    email: user?.email ?? lastCustomer?.email ?? '',
+    phone: lastCustomer?.phone ?? user?.phone ?? '',
+    address: lastCustomer?.address ?? '',
+    city: lastCustomer?.city ?? '',
+    postalCode: lastCustomer?.postalCode ?? '',
+    country: lastCustomer?.country ?? 'Bangladesh',
   });
 
   // Payment Selection
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bkash');
-  const [bkashNumber, setBkashNumber] = useState('01712345678');
-  const [nagadNumber, setNagadNumber] = useState('01819876543');
-  const [cardNumber, setCardNumber] = useState('4242 •••• •••• 4242');
-  const [cardExpiry, setCardExpiry] = useState('12/28');
-  const [cardCvc, setCardCvc] = useState('883');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
+  const [bkashNumber, setBkashNumber] = useState('');
+  const [nagadNumber, setNagadNumber] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Voucher input
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
+
+  // লগইন পরে লোড হলেও ফর্মে নাম/ফোন/ইমেইল বসে যাবে
+  useEffect(() => {
+    if (user) {
+      setFormData((f) => ({
+        ...f,
+        name: f.name || user.name,
+        phone: f.phone || user.phone,
+        email: user.email,
+      }));
+    }
+  }, [user]);
 
   if (cart.length === 0) {
     return (
@@ -67,6 +80,40 @@ export const CheckoutPage: React.FC = () => {
         >
           Browse Products
         </button>
+      </div>
+    );
+  }
+
+  // লগইন ছাড়া চেকআউট করা যাবে না
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center">
+        <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xs">
+          <h2 className="text-lg font-extrabold text-slate-950 mb-2">অর্ডার করতে লগইন করুন</h2>
+          <p className="text-xs text-slate-500 mb-6">
+            {authLoading
+              ? 'একটু অপেক্ষা করুন...'
+              : 'আপনার কার্টের পণ্যগুলো সংরক্ষিত আছে। লগইন বা রেজিস্ট্রেশন করে অর্ডার সম্পন্ন করুন।'}
+          </p>
+          {!authLoading && (
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => openAuth('login')}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 cursor-pointer"
+              >
+                লগইন
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuth('register')}
+                className="px-6 py-2.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
+              >
+                রেজিস্ট্রেশন
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -87,6 +134,19 @@ export const CheckoutPage: React.FC = () => {
     e.preventDefault();
     if (!formData.name || !formData.phone || !formData.address) {
       showToast('Please fill in your delivery contact details.', 'error');
+      return;
+    }
+
+    if (paymentMethod === 'bkash' && !bkashNumber.trim()) {
+      showToast('Please enter your bKash account number.', 'error');
+      return;
+    }
+    if (paymentMethod === 'nagad' && !nagadNumber.trim()) {
+      showToast('Please enter your Nagad account number.', 'error');
+      return;
+    }
+    if (paymentMethod === 'card' && (!cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim())) {
+      showToast('Please fill in your card details.', 'error');
       return;
     }
 
@@ -115,7 +175,7 @@ export const CheckoutPage: React.FC = () => {
     // Simulate verified transaction
     setTimeout(() => {
       placeOrder({
-        customer: formData,
+        customer: { ...formData, email: user?.email ?? formData.email },
         items: orderItems,
         subtotal: cartSubtotal,
         discount: cartDiscount,
@@ -171,6 +231,7 @@ export const CheckoutPage: React.FC = () => {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="আপনার পুরো নাম"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                   />
                 </div>
@@ -184,6 +245,7 @@ export const CheckoutPage: React.FC = () => {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="01XXXXXXXXX"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                   />
                 </div>
@@ -196,7 +258,9 @@ export const CheckoutPage: React.FC = () => {
                     type="email"
                     required
                     value={formData.email}
+                    readOnly={!!user}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="name@example.com"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                   />
                 </div>
@@ -210,6 +274,7 @@ export const CheckoutPage: React.FC = () => {
                     required
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="বাসা/ফ্ল্যাট নং, রোড, এলাকা"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                   />
                 </div>
@@ -221,6 +286,7 @@ export const CheckoutPage: React.FC = () => {
                     required
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="ঢাকা"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                   />
                 </div>
@@ -231,6 +297,7 @@ export const CheckoutPage: React.FC = () => {
                     type="text"
                     value={formData.postalCode}
                     onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                    placeholder="1200"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                   />
                 </div>
@@ -381,6 +448,19 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               )}
 
+              {paymentMethod === 'nagad' && (
+                <div className="mt-4 p-4 rounded-xl bg-orange-50/60 border border-orange-200 text-xs space-y-2">
+                  <span className="font-bold text-orange-950 block">Nagad Account Number</span>
+                  <input
+                    type="tel"
+                    value={nagadNumber}
+                    onChange={(e) => setNagadNumber(e.target.value)}
+                    placeholder="01XXXXXXXXX"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-orange-300 bg-white focus:outline-none"
+                  />
+                </div>
+              )}
+
               {paymentMethod === 'card' && (
                 <div className="mt-4 p-4 rounded-xl bg-indigo-50/60 border border-indigo-200 text-xs space-y-3">
                   <div>
@@ -389,6 +469,7 @@ export const CheckoutPage: React.FC = () => {
                       type="text"
                       value={cardNumber}
                       onChange={(e) => setCardNumber(e.target.value)}
+                      placeholder="1234 5678 9012 3456"
                       className="w-full px-3 py-2 text-xs rounded-lg border border-indigo-300 bg-white focus:outline-none"
                     />
                   </div>
@@ -399,6 +480,7 @@ export const CheckoutPage: React.FC = () => {
                         type="text"
                         value={cardExpiry}
                         onChange={(e) => setCardExpiry(e.target.value)}
+                        placeholder="MM/YY"
                         className="w-full px-3 py-2 text-xs rounded-lg border border-indigo-300 bg-white focus:outline-none"
                       />
                     </div>
@@ -408,6 +490,7 @@ export const CheckoutPage: React.FC = () => {
                         type="text"
                         value={cardCvc}
                         onChange={(e) => setCardCvc(e.target.value)}
+                        placeholder="123"
                         className="w-full px-3 py-2 text-xs rounded-lg border border-indigo-300 bg-white focus:outline-none"
                       />
                     </div>
@@ -420,12 +503,17 @@ export const CheckoutPage: React.FC = () => {
           {/* Right Column: Order Summary & Review (5 Cols) */}
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
-              <h2 className="text-sm font-bold text-slate-950 pb-3 border-b border-slate-100">
-                Order Review ({cart.length} items)
-              </h2>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h2 className="text-sm font-bold text-slate-950">
+                  অর্ডারের আইটেম সমূহ ({cart.length} টি)
+                </h2>
+                <span className="text-[10px] text-violet-600 font-semibold bg-violet-50 px-2 py-0.5 rounded-full">
+                  ক্লিক করে বিস্তারিত দেখুন 👁️
+                </span>
+              </div>
 
               {/* Items List */}
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {cart.map((item) => {
                   const p = products.find((prod) => prod.id === item.productId);
                   if (!p) return null;
@@ -433,22 +521,36 @@ export const CheckoutPage: React.FC = () => {
                   return (
                     <div
                       key={`${item.productId}-${item.selectedSize}-${item.selectedColor}`}
-                      className="flex items-center gap-3 text-xs"
+                      onClick={() => setQuickViewProduct(p)}
+                      className="group flex items-center gap-3 text-xs p-2 rounded-xl hover:bg-violet-50/60 border border-transparent hover:border-violet-100 transition-all cursor-pointer"
+                      title="পণ্যটির ছবি ও বিবরণ দেখতে ক্লিক করুন"
                     >
-                      <img
-                        src={p.images[0]}
-                        alt={p.title}
-                        className="w-12 h-12 rounded-lg object-cover border border-slate-100 bg-slate-50 shrink-0"
-                      />
+                      <div className="relative shrink-0 overflow-hidden rounded-lg">
+                        <img
+                          src={p.images[0]}
+                          alt={p.title}
+                          className="w-14 h-14 rounded-lg object-contain border border-slate-200/80 bg-white p-1 transition-transform group-hover:scale-105"
+                        />
+                        <span className="absolute inset-0 bg-violet-600/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-[9px] font-bold text-violet-800 bg-white/60">
+                          দেখুন
+                        </span>
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{p.title}</p>
-                        <p className="text-[11px] text-slate-400">
-                          Qty: {item.quantity}{' '}
+                        <p className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors line-clamp-1">
+                          {p.title}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          পরিমাণ: {item.quantity}{' '}
                           {item.selectedSize && `· Size: ${item.selectedSize}`}{' '}
                           {item.selectedColor && `· Color: ${item.selectedColor}`}
                         </p>
+                        {p.salePrice && p.salePrice < p.regularPrice && (
+                          <span className="text-[10px] text-rose-600 font-semibold">
+                            ছাড়: ৳{(p.regularPrice - p.salePrice).toLocaleString()} টাকা
+                          </span>
+                        )}
                       </div>
-                      <span className="font-bold text-slate-900 shrink-0 font-mono">
+                      <span className="font-extrabold text-violet-700 shrink-0 font-mono text-xs">
                         ৳{(item.unitPrice * item.quantity).toLocaleString()}
                       </span>
                     </div>
@@ -480,7 +582,7 @@ export const CheckoutPage: React.FC = () => {
                         type="text"
                         value={couponInput}
                         onChange={(e) => setCouponInput(e.target.value)}
-                        placeholder="Coupon code (e.g. WELCOME10)"
+                        placeholder="Coupon code"
                         className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 uppercase bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
                       />
                       <button

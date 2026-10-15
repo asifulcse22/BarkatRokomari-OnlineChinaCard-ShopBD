@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { AIBusinessCenter } from './ai/AIBusinessCenter';
 import { ProductManagement } from './ProductManagement';
 import { OrderManagement } from './OrderManagement';
 import { CouponManagement } from './CouponManagement';
+import { NeonDatabaseModal } from './NeonDatabaseModal';
 import {
   Sparkles,
   Package,
@@ -15,9 +16,11 @@ import {
   Share2,
   CheckCircle2,
   TrendingUp,
+  Database,
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
+  const [isNeonModalOpen, setIsNeonModalOpen] = useState(false);
   const {
     activeAdminTab,
     setActiveAdminTab,
@@ -49,13 +52,24 @@ export const AdminDashboard: React.FC = () => {
           </h1>
         </div>
 
-        <button
-          onClick={() => setViewMode('customer')}
-          className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer self-start md:self-auto shadow-xs"
-        >
-          <ArrowLeft className="w-4 h-4 text-slate-400" />
-          <span>Switch to Customer Storefront</span>
-        </button>
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <button
+            onClick={() => setIsNeonModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+            title="Configure Neon Serverless PostgreSQL"
+          >
+            <Database className="w-4 h-4 text-teal-600" />
+            <span>Neon DB সেটআপ</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('customer')}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-400" />
+            <span>Customer Storefront</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats Strip */}
@@ -226,6 +240,12 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Neon Database Setup Modal */}
+      <NeonDatabaseModal
+        isOpen={isNeonModalOpen}
+        onClose={() => setIsNeonModalOpen(false)}
+      />
     </div>
   );
 };

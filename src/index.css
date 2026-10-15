@@ -11,3 +11,14 @@
   }
 }
 
+
+.setup-guide-bangla {
+  font-family: 'Noto Sans Bengali', sans-serif;
+  font-size: 15px;
+  line-height: 2;
+  letter-spacing: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+

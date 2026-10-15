@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { Order, OrderStatus } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { Order } from '../../types';
 import {
   Package,
   Heart,
   MapPin,
   LifeBuoy,
-  User,
-  Clock,
-  RotateCcw,
-  XCircle,
   Truck,
   CheckCircle2,
   Trash2,
@@ -20,7 +17,7 @@ import {
 
 export const CustomerAccountPage: React.FC = () => {
   const {
-    orders,
+    orders: allOrders,
     wishlist,
     products,
     addToCart,
@@ -28,11 +25,19 @@ export const CustomerAccountPage: React.FC = () => {
     cancelOrder,
     requestReturn,
     activeOrderToTrack,
-    setActiveOrderToTrack,
     setActiveCustomerPage,
-    setSelectedProductId,
     showToast,
   } = useStore();
+  const { user, loading: authLoading, openAuth, logout } = useAuth();
+
+  // শুধু এই ইউজারের নিজের অর্ডারগুলো দেখাবে (ইমেইল মিলিয়ে)
+  const orders = useMemo(
+    () =>
+      user
+        ? allOrders.filter((o) => o.customer.email?.toLowerCase() === user.email.toLowerCase())
+        : [],
+    [allOrders, user]
+  );
 
   const [activeTab, setActiveTab] = useState<'orders' | 'tracking' | 'wishlist' | 'addresses' | 'support'>('orders');
 
@@ -54,6 +59,63 @@ export const CustomerAccountPage: React.FC = () => {
   const matchedTrackOrder = orders.find(
     (o) => o.orderNumber.toUpperCase() === trackSearchOrderNum.trim().toUpperCase()
   );
+
+  // প্রোফাইল তথ্য সর্বশেষ অর্ডারের কাস্টমার থেকে আসে। অর্ডার না থাকলে Guest দেখাবে।
+  const profile = orders[0]?.customer;
+  const profileName = user?.name || profile?.name || 'Guest Customer';
+  const profileInitials =
+    profileName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || 'G';
+  const profileSubtitle = user ? [user.email, user.phone].filter(Boolean).join(' · ') : '';
+
+  // অর্ডারগুলোর ডেলিভারি ঠিকানা থেকে unique ঠিকানার তালিকা
+  const savedAddresses = useMemo(() => {
+    const seen = new Map<string, Order['customer']>();
+    orders.forEach((o) => {
+      const key = `${o.customer.address}|${o.customer.city}`.toLowerCase();
+      if (!seen.has(key)) seen.set(key, o.customer);
+    });
+    return Array.from(seen.values());
+  }, [orders]);
+
+  // লগইন ছাড়া একাউন্ট পেজ দেখা যাবে না
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center">
+        <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xs">
+          <h2 className="text-lg font-extrabold text-slate-950 mb-2">আপনার একাউন্টে লগইন করুন</h2>
+          <p className="text-xs text-slate-500 mb-6">
+            {authLoading
+              ? 'একটু অপেক্ষা করুন...'
+              : 'আপনার অর্ডার, ট্র্যাকিং ও উইশলিস্ট দেখতে লগইন বা রেজিস্ট্রেশন করুন।'}
+          </p>
+          {!authLoading && (
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => openAuth('login')}
+                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 cursor-pointer"
+              >
+                লগইন
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuth('register')}
+                className="px-6 py-2.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
+              >
+                রেজিস্ট্রেশন
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const handleOpenAction = (order: Order, type: 'cancel' | 'return') => {
     setTargetOrderForAction(order);
@@ -92,17 +154,22 @@ export const CustomerAccountPage: React.FC = () => {
       <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-xs mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-xs">
-            RC
+            {profileInitials}
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-slate-950">Rahim Chowdhury</h1>
-            <p className="text-xs text-slate-500">
-              rahim.c@example.com · +880 1712-345678 · Banani, Dhaka
-            </p>
+            <h1 className="text-xl font-extrabold text-slate-950">{profileName}</h1>
+            <p className="text-xs text-slate-500">{profileSubtitle}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={logout}
+            className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold cursor-pointer transition-colors"
+          >
+            লগআউট
+          </button>
           <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
             <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Orders</span>
             <span className="font-extrabold text-slate-900">{orders.length} placed</span>
@@ -189,7 +256,7 @@ export const CustomerAccountPage: React.FC = () => {
               </p>
               <button
                 onClick={() => setActiveCustomerPage('catalog')}
-                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl"
+                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl cursor-pointer"
               >
                 Browse Catalog
               </button>
@@ -231,7 +298,7 @@ export const CustomerAccountPage: React.FC = () => {
                         {order.orderStatus}
                       </span>
                       <span className="text-xs font-extrabold text-slate-900">
-                        ${order.total.toFixed(2)}
+                        ৳{order.total.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -252,7 +319,7 @@ export const CustomerAccountPage: React.FC = () => {
                           </p>
                         </div>
                         <span className="font-semibold text-slate-900">
-                          ${(item.price * item.quantity).toFixed(2)}
+                          ৳{(item.price * item.quantity).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -314,7 +381,7 @@ export const CustomerAccountPage: React.FC = () => {
                 type="text"
                 value={trackSearchOrderNum}
                 onChange={(e) => setTrackSearchOrderNum(e.target.value)}
-                placeholder="Enter Order Number e.g. SZ-2026-9810"
+                placeholder="Enter your Order Number (SZ-2026-XXXX)"
                 className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 uppercase bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600 font-mono"
               />
             </div>
@@ -365,7 +432,9 @@ export const CustomerAccountPage: React.FC = () => {
             </div>
           ) : (
             <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-xs text-slate-500">
-              Please enter an active order number above to view tracking progress.
+              {trackSearchOrderNum.trim()
+                ? 'এই অর্ডার নম্বরে কোনো অর্ডার পাওয়া যায়নি। নম্বরটি আবার চেক করুন।'
+                : 'Please enter an active order number above to view tracking progress.'}
             </div>
           )}
         </div>
@@ -383,7 +452,7 @@ export const CustomerAccountPage: React.FC = () => {
               </p>
               <button
                 onClick={() => setActiveCustomerPage('catalog')}
-                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl"
+                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl cursor-pointer"
               >
                 Explore Products
               </button>
@@ -414,7 +483,7 @@ export const CustomerAccountPage: React.FC = () => {
                         {product.title}
                       </h4>
                       <span className="text-sm font-extrabold text-slate-900 block mb-3">
-                        ${product.salePrice || product.regularPrice}
+                        ৳{(product.salePrice || product.regularPrice).toLocaleString()}
                       </span>
                     </div>
 
@@ -444,28 +513,40 @@ export const CustomerAccountPage: React.FC = () => {
 
       {/* Tab 4: Delivery Addresses */}
       {activeTab === 'addresses' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-          <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-2 relative">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 uppercase">
-              Default Delivery Address
-            </span>
-            <h3 className="text-sm font-bold text-slate-900">Banani Residence</h3>
-            <p className="text-xs text-slate-600">Rahim Chowdhury</p>
-            <p className="text-xs text-slate-500">House 42, Road 11, Banani</p>
-            <p className="text-xs text-slate-500">Dhaka - 1213, Bangladesh</p>
-            <p className="text-xs text-slate-500">Phone: +880 1712-345678</p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-2">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
-              Office Address
-            </span>
-            <h3 className="text-sm font-bold text-slate-900">Corporate HQ</h3>
-            <p className="text-xs text-slate-600">Rahim Chowdhury</p>
-            <p className="text-xs text-slate-500">Level 8, Concord Tower, Gulshan 1</p>
-            <p className="text-xs text-slate-500">Dhaka - 1212, Bangladesh</p>
-            <p className="text-xs text-slate-500">Phone: +880 1712-345678</p>
-          </div>
+        <div>
+          {savedAddresses.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center max-w-4xl">
+              <MapPin className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+              <h3 className="text-sm font-bold text-slate-900 mb-1">কোনো ঠিকানা সেভ করা নেই</h3>
+              <p className="text-xs text-slate-500">
+                অর্ডার করার সময় যে ঠিকানা দেবেন সেটি এখানে দেখা যাবে।
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+              {savedAddresses.map((addr, idx) => (
+                <div
+                  key={`${addr.address}-${idx}`}
+                  className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-2"
+                >
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      idx === 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    {idx === 0 ? 'Default Delivery Address' : 'Saved Address'}
+                  </span>
+                  <p className="text-sm font-bold text-slate-900">{addr.name}</p>
+                  <p className="text-xs text-slate-500">{addr.address}</p>
+                  <p className="text-xs text-slate-500">
+                    {[addr.city, addr.postalCode].filter(Boolean).join(' - ')}
+                    {addr.country ? `, ${addr.country}` : ''}
+                  </p>
+                  <p className="text-xs text-slate-500">Phone: {addr.phone}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -499,7 +580,7 @@ export const CustomerAccountPage: React.FC = () => {
                 required
                 value={ticketSubject}
                 onChange={(e) => setTicketSubject(e.target.value)}
-                placeholder="e.g. Courier delivery reschedule for banani order"
+                placeholder="e.g. Delivery reschedule request"
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
               />
             </div>

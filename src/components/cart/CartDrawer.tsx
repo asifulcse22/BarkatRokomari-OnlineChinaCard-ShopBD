@@ -29,7 +29,17 @@ export const CartDrawer: React.FC = () => {
     applyCoupon,
     removeCoupon,
     setActiveCustomerPage,
+    setSelectedProductId,
+    setQuickViewProduct,
   } = useStore();
+
+  const handleOpenProduct = (productId: string) => {
+    const prod = products.find((p) => p.id === productId);
+    if (prod) {
+      setQuickViewProduct(prod);
+      setIsCartOpen(false);
+    }
+  };
 
   const [couponCodeInput, setCouponCodeInput] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -48,8 +58,8 @@ export const CartDrawer: React.FC = () => {
   };
 
   const handleProceedToCheckout = () => {
-    setIsCartOpen(false);
-    setActiveCustomerPage('checkout');
+  setIsCartOpen(false); // কার্ট ড্রয়ার বন্ধ করবে
+  setActiveCustomerPage('checkout'); // চেকআউট পেজে নিয়ে যাবে
   };
 
   const freeShippingThreshold = 1000;
@@ -167,17 +177,32 @@ export const CartDrawer: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 30, height: 0 }}
                         transition={{ duration: 0.25 }}
-                        className="flex gap-3.5 pb-4 border-b border-slate-100 last:border-b-0"
+                        className="group flex gap-3.5 pb-4 border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 p-2 rounded-2xl transition-colors"
                       >
-                        <img
-                          src={product.images[0]}
-                          alt={product.title}
-                          className="w-18 h-18 object-contain rounded-xl border border-slate-100 bg-slate-50 p-1 shrink-0"
-                        />
+                        {/* Clickable Image */}
+                        <div
+                          onClick={() => handleOpenProduct(item.productId)}
+                          className="relative cursor-pointer shrink-0 overflow-hidden rounded-xl"
+                          title="পণ্যটি দেখতে ক্লিক করুন"
+                        >
+                          <img
+                            src={product.images[0]}
+                            alt={product.title}
+                            className="w-18 h-18 object-contain rounded-xl border border-slate-200/80 bg-white p-1 transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <span className="absolute inset-0 bg-violet-600/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center text-[10px] font-bold text-violet-900 bg-white/70 backdrop-blur-xs">
+                            দেখুন 👁️
+                          </span>
+                        </div>
+
                         <div className="flex-1 min-w-0 flex flex-col justify-between">
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">
+                              <h4
+                                onClick={() => handleOpenProduct(item.productId)}
+                                className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight cursor-pointer hover:text-violet-700 transition-colors"
+                                title="পণ্যটির বিস্তারিত দেখতে ক্লিক করুন"
+                              >
                                 {product.title}
                               </h4>
                               <motion.button
@@ -199,15 +224,21 @@ export const CartDrawer: React.FC = () => {
                                 {item.selectedColor && `Color: ${item.selectedColor}`}
                               </p>
                             )}
+
+                            {product.salePrice && product.salePrice < product.regularPrice && (
+                              <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                                ছাড়: ৳{(product.regularPrice - product.salePrice).toLocaleString()} টাকা
+                              </span>
+                            )}
                           </div>
 
-                          <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100/60">
                             {/* Quantity Selector with Motion */}
-                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
                               <motion.button
                                 whileTap={{ scale: 0.8 }}
                                 onClick={() => updateCartQuantity(item.productId, item.quantity - 1)}
-                                className="p-1 hover:bg-slate-200 transition-colors text-slate-700 cursor-pointer"
+                                className="p-1 hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
                                 aria-label="Decrease quantity"
                               >
                                 <Minus className="w-3 h-3" />
@@ -218,7 +249,7 @@ export const CartDrawer: React.FC = () => {
                               <motion.button
                                 whileTap={{ scale: 0.8 }}
                                 onClick={() => updateCartQuantity(item.productId, item.quantity + 1)}
-                                className="p-1 hover:bg-slate-200 transition-colors text-slate-700 cursor-pointer"
+                                className="p-1 hover:bg-slate-100 transition-colors text-slate-700 cursor-pointer"
                                 aria-label="Increase quantity"
                               >
                                 <Plus className="w-3 h-3" />
@@ -226,7 +257,7 @@ export const CartDrawer: React.FC = () => {
                             </div>
 
                             {/* Line Price */}
-                            <span className="text-xs font-black text-blue-600 font-mono">
+                            <span className="text-xs font-black text-violet-700 font-mono">
                               ৳{(item.unitPrice * item.quantity).toLocaleString()}
                             </span>
                           </div>

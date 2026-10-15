@@ -1,11 +1,18 @@
+import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
-dotenv.config();
+import {
+  initializeNeonDatabase,
+  isNeonConfigured,
+  sql,
+  mapRowToProduct,
+  mapRowToOrder,
+} from './src/db/neon';
+import { INITIAL_PRODUCTS } from './src/data/mockData';
+import { authRouter, ensureUsersTable, getAuthUser, requireAdmin } from './src/db/auth';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,6 +21,12 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
+
+// Login / Register / Logout / Me
+app.use('/api/auth', authRouter);
+
+// AI রুটগুলো শুধু অ্যাডমিনের জন্য
+app.use('/api/ai', requireAdmin);
 
 // Initialize server-side Gemini SDK client
 const geminiApiKey = process.env.GEMINI_API_KEY || '';
@@ -380,13 +393,13 @@ Provide output in JSON:
       success: true,
       data: {
         headline: `অভিজাত জীবনের আধুনিক সঙ্গী — ${product?.title || 'প্রিমিয়াম গ্যাজেট'}`,
-        content: `🎧 গান শুনুন বা কাজে মনোনিবেশ করুন কোনো বাধা ছাড়াই!\n\n✨ অসাধারণ সাউন্ড কোয়ালিটি এবং দীর্ঘস্থায়ী ব্যাটারি লাইফ নিয়ে ShopZone-এ চলে এসেছে ${product?.title || 'আমাদের নতুন কালেকশন'}।\n\n🔹 বিশেষ বৈশিষ্ট্য:\n• প্রিমিয়াম বিল্ড কোয়ালিটি\n• দ্রুত ডেলিভারি সমগ্র বাংলাদেশে\n• ক্যাশ অন ডেলিভারি এবং বিকাশ/নগদে পেমেন্টের সুব্যবস্থা\n\n🔥 স্টক সীমিত! এখনই আপনার অর্ডার কনফার্ম করুন এবং উপভোগ করুন আকর্ষণীয় অফার।`,
+        content: `🎧 গান শুনুন বা কাজে মনোনিবেশ করুন কোনো বাধা ছাড়াই!\n\n✨ অসাধারণ সাউন্ড কোয়ালিটি এবং দীর্ঘস্থায়ী ব্যাটারি লাইফ নিয়ে ShopZone-এ চলে এসেছে ${product?.title || 'আমাদের নতুন কালেকশন'}।\n\n🔹 বিশেষ বৈশিষ্ট্য:\n• প্রিমিয়াম বিল্ড কোয়ালিটি\n• দ্রুত ডেলিভারি সমগ্র বাংলাদেশে\n• ক্যাশ অন ডেলিভারি এবং বিকাশ/নগদে পেমেন্টের সুব্যবস্থা\n\n🔥 স্টক সীমিত! এখনই আপনার অর্ডার কনফার্ম করুন এবং উপভোগ করুন আকর্ষণীয় অফার।`,
         callToAction: 'এখনই অর্ডার করুন — ShopZone-এ কিনুন',
         hashtags: ['#ShopZone', '#OnlineShoppingBD', '#PremiumQuality', '#ExclusiveOffer'],
         seoMetaTitle: `${product?.title || 'প্রোডাক্ট'} কিনুন সেরা দামে | ShopZone বাংলাদেশ`,
-        seoMetaDescription: `${product?.title || 'প্রিমিয়াম প্রোডাক্ট'} এখন আকর্ষণীয় অফারে ShopZone-এ। দ্রুত ক্যাশ অন ডেলিভারি এবং ১০০% আসল পণ্যের নিশ্চয়তা।`,
+        seoMetaDescription: `${product?.title || 'প্রিমিয়াম প্রোডাক্ট'} এখন আকর্ষণীয় অফারে ShopZone-এ। দ্রুত ক্যাশ অন ডেলিভারি এবং ১০০% আসল পণ্যের নিশ্চয়তা।`,
         targetAudience: 'টেক সচেতন তরুণ ও তরুণী, প্রফেশনালস এবং গ্যাজেট প্রেমী',
-        keyBenefitAngles: ['১০০% অরিজিনাল কোয়ালিটি', 'সহজ রিটার্ন পলিসি ও নিরাপদ পেমেন্ট'],
+        keyBenefitAngles: ['১০০% অরিজিনাল কোয়ালিটি', 'সহজ রিটার্ন পলিসি ও নিরাপদ পেমেন্ট'],
       },
       source: 'fallback',
     });
@@ -562,6 +575,252 @@ Generate customer segment analysis in JSON:
     source: 'fallback',
   });
 });
+
+// ====================================================================
+// Neon PostgreSQL Database API Endpoints
+// ====================================================================
+
+// Check Database Connection Status
+app.get('/api/db/status', async (_req: Request, res: Response) => {
+  if (!isNeonConfigured || !sql) {
+    return res.json({
+      connected: false,
+      provider: 'Neon (PostgreSQL)',
+      status: 'unconfigured',
+      message: 'DATABASE_URL is not set in environment. Running in client storage / fallback mode.',
+    });
+  }
+
+  try {
+    const result = await sql`SELECT NOW() as server_time, version() as version;`;
+    const countResult = await sql`SELECT COUNT(*)::int as product_count FROM products;`;
+    return res.json({
+      connected: true,
+      provider: 'Neon (PostgreSQL)',
+      status: 'active',
+      serverTime: result[0]?.server_time,
+      productCount: countResult[0]?.product_count || 0,
+      message: 'Successfully connected to Neon Serverless PostgreSQL!',
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      connected: false,
+      provider: 'Neon (PostgreSQL)',
+      status: 'error',
+      message: err.message || 'Error querying Neon database',
+    });
+  }
+});
+
+// GET all products from Neon (or fallback to INITIAL_PRODUCTS)
+app.get('/api/products', async (_req: Request, res: Response) => {
+  if (sql) {
+    try {
+      const rows = await sql`SELECT * FROM products ORDER BY created_at DESC;`;
+      const products = rows.map(mapRowToProduct);
+      return res.json({ success: true, source: 'neon', data: products });
+    } catch (err: any) {
+      console.error('[Neon DB Error in GET /api/products]:', err);
+      // Fallback
+      return res.json({ success: true, source: 'fallback', data: INITIAL_PRODUCTS });
+    }
+  }
+  return res.json({ success: true, source: 'mock', data: INITIAL_PRODUCTS });
+});
+
+// POST create a product in Neon
+app.post('/api/products', requireAdmin, async (req: Request, res: Response) => {
+  const p = req.body;
+  if (!p || !p.title) {
+    return res.status(400).json({ error: 'Product title is required' });
+  }
+
+  const id = p.id || `prod-${Date.now()}`;
+  const slug = p.slug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  if (sql) {
+    try {
+      await sql`
+        INSERT INTO products (
+          id, title, slug, sku, category, brand, description, specifications,
+          regular_price, sale_price, stock, rating, review_count, images,
+          variations, featured, is_new, is_bestseller, tags, sales_count, created_at
+        ) VALUES (
+          ${id}, ${p.title}, ${slug}, ${p.sku || ''}, ${p.category || 'Electronics'},
+          ${p.brand || 'ShopZone'}, ${p.description || ''}, ${JSON.stringify(p.specifications || [])},
+          ${p.regularPrice || 0}, ${p.salePrice ?? null}, ${p.stock || 0},
+          ${p.rating || 5.0}, ${p.reviewCount || 0}, ${JSON.stringify(p.images || [])},
+          ${JSON.stringify(p.variations || {})}, ${p.featured ?? false},
+          ${p.isNew ?? true}, ${p.isBestSeller ?? false},
+          ${JSON.stringify(p.tags || [])}, ${p.salesCount || 0}, ${p.createdAt || new Date().toISOString()}
+        );
+      `;
+      return res.json({ success: true, source: 'neon', id });
+    } catch (err: any) {
+      console.error('[Neon DB Error in POST /api/products]:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.json({ success: true, source: 'mock', id });
+});
+
+// PUT update a product in Neon
+app.put('/api/products/:id', requireAdmin, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const p = req.body;
+
+  if (sql) {
+    try {
+      await sql`
+        UPDATE products SET
+          title = ${p.title},
+          regular_price = ${p.regularPrice},
+          sale_price = ${p.salePrice ?? null},
+          stock = ${p.stock},
+          category = ${p.category},
+          brand = ${p.brand},
+          description = ${p.description},
+          images = ${JSON.stringify(p.images || [])},
+          specifications = ${JSON.stringify(p.specifications || [])},
+          variations = ${JSON.stringify(p.variations || {})},
+          tags = ${JSON.stringify(p.tags || [])},
+          featured = ${p.featured ?? false},
+          is_new = ${p.isNew ?? false},
+          is_bestseller = ${p.isBestSeller ?? false}
+        WHERE id = ${id};
+      `;
+      return res.json({ success: true, source: 'neon' });
+    } catch (err: any) {
+      console.error('[Neon DB Error in PUT /api/products]:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.json({ success: true, source: 'mock' });
+});
+
+// DELETE a product in Neon
+app.delete('/api/products/:id', requireAdmin, async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (sql) {
+    try {
+      await sql`DELETE FROM products WHERE id = ${id};`;
+      return res.json({ success: true, source: 'neon' });
+    } catch (err: any) {
+      console.error('[Neon DB Error in DELETE /api/products]:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.json({ success: true, source: 'mock' });
+});
+
+// GET orders: লগইন করা কাস্টমার শুধু নিজের অর্ডার পাবে, admin সব অর্ডার পাবে
+app.get('/api/orders', async (req: Request, res: Response) => {
+  const authUser = await getAuthUser(req);
+  if (!authUser) return res.json({ success: true, source: 'auth', data: [] });
+
+  if (sql) {
+    try {
+      const rows =
+        authUser.role === 'admin'
+          ? await sql`SELECT * FROM orders ORDER BY created_at DESC;`
+          : await sql`SELECT * FROM orders
+                      WHERE lower(customer->>'email') = ${authUser.email.toLowerCase()}
+                      ORDER BY created_at DESC;`;
+      return res.json({ success: true, source: 'neon', data: rows.map(mapRowToOrder) });
+    } catch (err: any) {
+      console.error('[Neon DB Error in GET /api/orders]:', err);
+      return res.json({ success: true, source: 'fallback', data: [] });
+    }
+  }
+  return res.json({ success: true, source: 'mock', data: [] });
+});
+
+// POST create an order in Neon (লগইন বাধ্যতামূলক)
+app.post('/api/orders', async (req: Request, res: Response) => {
+  const authUser = await getAuthUser(req);
+  if (!authUser) return res.status(401).json({ error: 'অর্ডার করতে লগইন করুন।' });
+
+  const o = req.body;
+  if (!o || !o.items || !o.customer) {
+    return res.status(400).json({ error: 'Order items and customer details are required' });
+  }
+
+  // অর্ডারের ইমেইল সবসময় লগইন করা ইউজারের ইমেইল হবে (অন্যের নামে অর্ডার ঠেকাতে)
+  const customer = { ...o.customer, email: authUser.email };
+
+  const id = o.id || `ord-${Date.now()}`;
+  const orderNumber = o.orderNumber || `SZ-${Math.floor(100000 + Math.random() * 900000)}`;
+
+  if (sql) {
+    try {
+      await sql`
+        INSERT INTO orders (
+          id, order_number, created_at, customer, items, subtotal,
+          discount, shipping_fee, total, coupon_code, payment_method,
+          payment_status, order_status, tracking_history, cancellation_reason, return_reason
+        ) VALUES (
+          ${id}, ${orderNumber}, ${o.createdAt || new Date().toISOString()},
+          ${JSON.stringify(customer)}, ${JSON.stringify(o.items)},
+          ${o.subtotal || 0}, ${o.discount || 0}, ${o.shippingFee || 0}, ${o.total || 0},
+          ${o.couponCode || null}, ${o.paymentMethod || 'cod'}, ${o.paymentStatus || 'pending'},
+          ${o.orderStatus || 'Pending'}, ${JSON.stringify(o.trackingHistory || [])},
+          ${o.cancellationReason || null}, ${o.returnReason || null}
+        );
+      `;
+      return res.json({ success: true, source: 'neon', id, orderNumber });
+    } catch (err: any) {
+      console.error('[Neon DB Error in POST /api/orders]:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.json({ success: true, source: 'mock', id, orderNumber });
+});
+
+// PATCH update order status
+app.patch('/api/orders/:id/status', requireAdmin, async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status, trackingStep } = req.body;
+
+  if (sql) {
+    try {
+      if (trackingStep) {
+        await sql`
+          UPDATE orders 
+          SET order_status = ${status},
+              tracking_history = tracking_history || ${JSON.stringify([trackingStep])}::jsonb
+          WHERE id = ${id};
+        `;
+      } else {
+        await sql`UPDATE orders SET order_status = ${status} WHERE id = ${id};`;
+      }
+      return res.json({ success: true, source: 'neon' });
+    } catch (err: any) {
+      console.error('[Neon DB Error in PATCH /api/orders/:id/status]:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.json({ success: true, source: 'mock' });
+});
+
+// Seed Neon Database with initial catalog
+app.post('/api/db/seed', requireAdmin, async (_req: Request, res: Response) => {
+  const result = await initializeNeonDatabase();
+  return res.json(result);
+});
+
+// সার্ভার চালুর সময় users টেবিল বানিয়ে নেওয়া (না থাকলে)
+try {
+  await ensureUsersTable();
+  if (sql) console.log('[Auth] users table ready.');
+} catch (err) {
+  console.error('[Auth] users table error:', err);
+}
 
 // Mount Vite or serve static production build
 if (process.env.NODE_ENV !== 'production') {

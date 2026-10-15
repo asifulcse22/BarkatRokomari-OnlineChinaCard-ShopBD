@@ -20,7 +20,9 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { CartDrawer } from './components/cart/CartDrawer';
 import { ProductQuickViewModal } from './components/product/ProductQuickViewModal';
 import { ToastContainer } from './components/common/ToastContainer';
+import { AuthProvider } from './context/AuthContext';
 import { ArrowUp } from 'lucide-react';
+
 
 const MainContent: React.FC = () => {
   const { viewMode, activeCustomerPage } = useStore();
@@ -116,8 +118,10 @@ const MainContent: React.FC = () => {
 
 export default function App() {
   return (
+    <AuthProvider>
     <StoreProvider>
       <MainContent />
-    </StoreProvider>
+      </StoreProvider>
+      </AuthProvider>
   );
 }

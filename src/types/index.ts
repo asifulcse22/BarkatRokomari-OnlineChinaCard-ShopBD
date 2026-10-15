@@ -25,6 +25,7 @@ export interface Product {
   isBestSeller?: boolean;
   tags: string[];
   salesCount: number;
+  setupGuide?: string;
   createdAt: string;
 }
 

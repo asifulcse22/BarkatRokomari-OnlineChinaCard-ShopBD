@@ -153,26 +153,36 @@ export const ProductQuickViewModal: React.FC = () => {
                 <span className="text-xs text-slate-400">({product.reviewCount} reviews)</span>
               </div>
 
-              {/* Price */}
-              <div className="flex items-baseline gap-2.5 mb-4 pb-3 border-b border-slate-100">
-                <span className="text-2xl font-black text-blue-600 font-mono">
+              {/* Price with Bengali savings badge */}
+              <div className="flex flex-wrap items-baseline gap-2.5 mb-3 p-3 bg-violet-50/60 rounded-xl border border-violet-100">
+                <span className="text-2xl font-black text-violet-700 font-mono">
                   ৳{(product.salePrice || product.regularPrice).toLocaleString()}
                 </span>
-                {product.salePrice && (
+                {product.salePrice && product.salePrice < product.regularPrice && (
                   <>
-                    <span className="text-sm text-slate-400 line-through font-mono">
+                    <span className="text-xs text-slate-400 line-through font-mono">
                       ৳{product.regularPrice.toLocaleString()}
                     </span>
-                    <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-                      Save {discountPercent}%
+                    <span className="text-xs font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+                      মূল্য ছাড়: ৳{(product.regularPrice - product.salePrice).toLocaleString()} টাকা
                     </span>
                   </>
                 )}
               </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed mb-4 line-clamp-3">
+              <p className="text-xs text-slate-700 leading-relaxed mb-3 line-clamp-3 font-medium">
                 {product.description}
               </p>
+
+              {/* Setup Guide Preview if present */}
+              {product.setupGuide && (
+                <div className="mb-3 p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 text-[11px] text-blue-950">
+                  <span className="font-bold block mb-1">🛠️ সহজ সেটআপ টিপস:</span>
+                  <p className="line-clamp-2 text-slate-600">
+                    {product.setupGuide.split('\n')[0]}
+                  </p>
+                </div>
+              )}
 
               {/* Colors variant */}
               {product.variations?.colors && product.variations.colors.length > 0 && (

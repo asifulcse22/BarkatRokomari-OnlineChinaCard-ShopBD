@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../../context/StoreContext';
@@ -15,13 +14,38 @@ import {
   Heart,
 } from 'lucide-react';
 
+// নিজের WhatsApp নম্বর এখানে বসাও:
+// বাংলাদেশের নম্বরের আগে 88 যোগ করবে। +, স্পেস বা ড্যাশ দেবে না।
+const WHATSAPP_NUMBER = '8801911561232';
+
+const WHATSAPP_MESSAGE =
+  'আসসালামু আলাইকুম। আমি বরকত রকমারী অনলাইন শপ থেকে পণ্য সম্পর্কে জানতে চাই। অনুগ্রহ করে বিস্তারিত তথ্য জানাবেন। ধন্যবাদ।';
+
+const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  WHATSAPP_MESSAGE
+)}`;
+
+// WhatsApp brand icon
+const WhatsAppIcon: React.FC<{ className?: string }> = ({
+  className = 'h-5 w-5',
+}) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M20.52 3.48A11.82 11.82 0 0 0 12.1 0C5.52 0 .17 5.35.17 11.93c0 2.1.55 4.15 1.6 5.96L.06 24l6.27-1.64a11.9 11.9 0 0 0 5.77 1.47h.01c6.58 0 11.93-5.35 11.93-11.93 0-3.19-1.24-6.19-3.52-8.42ZM12.1 21.8a9.9 9.9 0 0 1-5.05-1.38l-.36-.21-3.72.98.99-3.63-.24-.37a9.83 9.83 0 0 1-1.52-5.26c0-5.47 4.45-9.92 9.92-9.92 2.65 0 5.14 1.03 7.01 2.91a9.86 9.86 0 0 1 2.9 7.01c0 5.47-4.45 9.92-9.93 9.92Zm5.44-7.43c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.47-.89-.8-1.49-1.77-1.67-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.53-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.2 5.08 4.49.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.42.25-.7.25-1.3.18-1.42-.08-.12-.28-.2-.58-.35Z" />
+  </svg>
+);
+
 export const Footer: React.FC = () => {
   const { setFilter, setActiveCustomerPage } = useStore();
 
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (newsletterEmail.trim()) {
@@ -91,7 +115,6 @@ export const Footer: React.FC = () => {
 
   return (
     <footer className="relative isolate overflow-hidden border-t border-violet-100 bg-gradient-to-br from-violet-50 via-white to-blue-50 text-slate-600">
-
       {/* Decorative Background Effects */}
       <div
         aria-hidden="true"
@@ -103,47 +126,40 @@ export const Footer: React.FC = () => {
       </div>
 
       <div className="mx-auto max-w-[1600px] px-4 py-12 sm:px-6 lg:px-8 lg:py-14">
-
         {/* Main Footer Grid */}
         <div className="grid grid-cols-1 gap-9 sm:grid-cols-2 lg:grid-cols-5 lg:gap-8">
-
           {/* Brand Information */}
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.15 }}
-            transition={{ duration: 0.55 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             className="space-y-5"
           >
-            {/* Logo + Shop Name */}
-            <button
+            {/* Logo — Image Only, Minimal Motion */}
+            <motion.button
               type="button"
               onClick={() => handleNavigate('home')}
-              aria-label="Go to ShopZone home"
-              className="group flex items-center gap-3 text-left"
+              aria-label="বরকত রকমারী হোম"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.025 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="inline-flex cursor-pointer items-center rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
             >
-              <span className="relative flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-2xl border border-violet-100 bg-white shadow-md shadow-violet-200/40 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg group-hover:shadow-violet-300/50">
-                <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-violet-500/10 via-blue-500/10 to-orange-400/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
-                <img
-                  src="/logo.png"
-                  alt="বরকত রকমারী"
-                  className="relative z-10 h-full w-full object-contain p-1"
-                />
-              </span>
-
-              <span className="flex min-w-0 flex-col">
-                <span className="bg-gradient-to-r from-violet-700 via-blue-600 to-orange-500 bg-clip-text text-lg font-extrabold leading-tight tracking-tight text-transparent transition-all duration-300 group-hover:tracking-wide sm:text-xl">
-                  বরকত রকমারী
-                </span>
-
-                <span className="mt-1 text-[11px] font-semibold leading-relaxed text-slate-500 transition-colors group-hover:text-violet-600 sm:text-xs">
-                  China Card Online Shop BD
-                </span>
-
-                <span className="mt-1.5 h-[2px] w-0 rounded-full bg-gradient-to-r from-violet-600 via-blue-500 to-orange-400 transition-all duration-500 group-hover:w-full" />
-              </span>
-            </button>
+              <img
+                src="/logo-backup.png"
+                alt="বরকত রকমারী — China Card Online Shop BD"
+                className="
+                  block
+                  h-[62px] w-[190px]
+                  sm:h-[68px] sm:w-[210px]
+                  object-contain object-left
+                "
+              />
+            </motion.button>
 
             <p className="max-w-sm text-xs leading-6 text-slate-600">
               Your premier multi-category digital shopping destination.
@@ -152,13 +168,16 @@ export const Footer: React.FC = () => {
             </p>
 
             {/* Trust Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-white/80 px-3 py-2 shadow-sm">
+            <motion.div
+              whileHover={{ y: -2 }}
+              className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-white/80 px-3 py-2 shadow-sm"
+            >
               <ShieldCheck className="h-4 w-4 text-violet-600" />
               <span className="text-[11px] font-semibold text-slate-700">
                 Shopping You Can Trust
               </span>
               <Sparkles className="h-3.5 w-3.5 text-orange-500" />
-            </div>
+            </motion.div>
 
             {/* Social Links */}
             <div className="flex items-center gap-2 pt-1">
@@ -219,7 +238,7 @@ export const Footer: React.FC = () => {
             </motion.div>
           ))}
 
-          {/* About ShopZone */}
+          {/* About Shop */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -258,6 +277,39 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
             </ul>
+
+             {/* WhatsApp Contact Button */}
+            <motion.a
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+              WHATSAPP_MESSAGE
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+           className="mt-4 inline-flex min-h-[46px] w-full items-center justify-center gap-2
+            rounded-lg border border-amber-300
+            bg-gradient-to-r from-amber-200 via-orange-200 to-red-200
+            px-3 py-2 text-gray-900 shadow-sm
+            transition-all duration-300
+            hover:-translate-y-0.5 hover:shadow-md
+            active:translate-y-0"
+            style={{
+              fontFamily: "'Hind Siliguri', sans-serif",
+              WebkitFontSmoothing: "antialiased",
+            }}
+          >
+            <WhatsAppIcon />
+
+            <span className="text-left">
+              <span className="block text-sm font-bold leading-5 text-gray-900">
+                হোয়াটসঅ্যাপে মেসেজ দিন
+              </span>
+              <span className="block text-xs font-semibold leading-4 text-gray-800">
+                সরাসরি যোগাযোগ করুন
+              </span>
+            </span>
+          </motion.a>
           </motion.div>
 
           {/* Newsletter */}
@@ -346,7 +398,7 @@ export const Footer: React.FC = () => {
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <span>256-Bit SSL Encrypted & PCI-DSS Compliant</span>
+            <span>256-Bit SSL Encrypted &amp; PCI-DSS Compliant</span>
           </div>
 
           <p className="flex items-center gap-1 text-[11px] text-slate-500">
