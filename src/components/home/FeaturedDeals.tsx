@@ -92,7 +92,9 @@ export const FeaturedDeals: React.FC = () => {
   };
 
   return (
-    <section className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-14">
+    /*<section className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-14"> */
+    <section className="w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 pb-14 min-w-0">
+
       {/* 1. Best Selling Products Header with Live Indicator & Motion */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
@@ -177,7 +179,7 @@ export const FeaturedDeals: React.FC = () => {
       </div>
 
       {/* 2. Grid of Product Cards: 4 Smart Products Guaranteed in Top Slots */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 min-w-0">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mb-12 w-full min-w-0">
         {displayedProducts.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

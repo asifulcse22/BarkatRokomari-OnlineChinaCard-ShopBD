@@ -54,7 +54,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         whileHover={{ y: -6, transition: { duration: 0.25, ease: 'easeOut' } }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 overflow-hidden shadow-xs hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 flex flex-col justify-between h-full min-w-0 max-w-sm sm:max-w-none mx-auto w-full"
+        className="group relative w-full min-w-0 max-w-full bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 overflow-hidden shadow-xs hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 flex flex-col justify-between h-full"
+
       >
 
 
@@ -66,7 +67,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <img
           src={product.images[0]}
           alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
+          /*className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out" */
+          className="w-full h-full object-contain"
           loading="lazy"
         />
 
