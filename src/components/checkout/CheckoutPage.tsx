@@ -15,7 +15,7 @@ import {
 // ➕ নতুন: দোকানের বিকাশ / নগদ নম্বর
 // ⚠️ এখানে আপনার নিজের নম্বর বসান। কাস্টমার এই নম্বরে টাকা পাঠাবে।
 // =====================================================================
-const SHOP_BKASH_NUMBER = '01XXXXXXXXX';
+const SHOP_BKASH_NUMBER = '01911561232';
 const SHOP_BKASH_TYPE = 'Personal'; // Personal / Agent / Merchant
 const SHOP_NAGAD_NUMBER = '01XXXXXXXXX';
 const SHOP_NAGAD_TYPE = 'Personal';
