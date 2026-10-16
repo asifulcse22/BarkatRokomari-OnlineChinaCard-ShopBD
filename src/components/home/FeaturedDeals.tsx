@@ -176,12 +176,12 @@ export const FeaturedDeals: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Grid of Product Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-12 min-w-0">
-      {displayedProducts.map((product) => (
-        <ProductCard key={product.id} product={product} />
-      ))}
-    </div>
+      {/* 2. Grid of Product Cards: 4 Smart Products Guaranteed in Top Slots */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 min-w-0">
+        {displayedProducts.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
 
       {/* 2.1 Featured 4 Smart Gadgets with Dedicated Setup Guide Showcase */}
       {smartGadgets.length > 0 && (
