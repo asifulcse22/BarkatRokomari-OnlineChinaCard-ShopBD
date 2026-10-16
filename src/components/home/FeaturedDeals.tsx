@@ -177,11 +177,11 @@ export const FeaturedDeals: React.FC = () => {
       </div>
 
       {/* 2. Grid of Product Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-12">
-        {displayedProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-12 min-w-0">
+      {displayedProducts.map((product) => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
 
       {/* 2.1 Featured 4 Smart Gadgets with Dedicated Setup Guide Showcase */}
       {smartGadgets.length > 0 && (

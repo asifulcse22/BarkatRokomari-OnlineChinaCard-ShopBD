@@ -1,11 +1,22 @@
+
 @import "tailwindcss";
 
-body {
-  overflow-x: clip;
+@layer base {
+  html,
+  body {
+    font-family: 'Hind Siliguri', 'Plus Jakarta Sans', 'Inter',
+      system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
 
@@ -13,7 +24,6 @@ body {
     transform: translateY(-3px);
   }
 }
-
 
 .setup-guide-bangla {
   font-family: 'Noto Sans Bengali', sans-serif;
@@ -27,8 +37,6 @@ body {
 .product-card img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* object-fit: cover er poriborte contain diben */
-  background-color: #ffffff; /* ash-pasher khali jayga shada rakhbe */
+  object-fit: contain;
+  background-color: #ffffff;
 }
-
-

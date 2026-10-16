@@ -47,16 +47,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      whileHover={{ y: -6, transition: { duration: 0.25, ease: 'easeOut' } }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 overflow-hidden shadow-xs hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 flex flex-col justify-between h-full"
-    >
-      {/* Product Image Container - Full Bleed / Edge-to-Edge with object-cover */}
+        <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-40px' }}
+        whileHover={{ y: -6, transition: { duration: 0.25, ease: 'easeOut' } }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-blue-400 overflow-hidden shadow-xs hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 flex flex-col justify-between h-full min-w-0"
+      >
+
+
+     {/* Product Image Container - Full Bleed / Edge-to-Edge with object-cover */}
       <div
         className="relative w-full aspect-square overflow-hidden bg-slate-100 cursor-pointer"
         onClick={handleOpenDetail}
