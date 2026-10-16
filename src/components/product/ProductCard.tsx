@@ -60,7 +60,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
 
      {/* Product Image Container - Full Bleed / Edge-to-Edge with object-cover */}
-      <div
+      {/*<div
         className="relative w-full aspect-square overflow-hidden bg-slate-100 cursor-pointer"
         onClick={handleOpenDetail}
       >
@@ -68,7 +68,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           src={product.images[0]}
           alt={product.title}
           /*className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out" */
-          className="w-full h-full object-contain"
+          /*className="w-full h-full object-contain"
+          loading="lazy"
+        /> */}
+
+        <div
+        className="relative w-full aspect-square overflow-hidden bg-white cursor-pointer"
+        onClick={handleOpenDetail}
+      >
+        <img
+          src={product.images[0]}
+          alt={product.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           loading="lazy"
         />
 
