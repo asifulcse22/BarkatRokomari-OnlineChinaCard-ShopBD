@@ -191,7 +191,7 @@ interface StoreContextType {
     orderInput: Omit<
       Order,
       'id' | 'orderNumber' | 'createdAt' | 'trackingHistory'
-    >
+    > & { paymentNote?: string }
   ) => Order;
 
   updateOrderStatus: (
@@ -892,8 +892,11 @@ export const StoreProvider: React.FC<{
     orderInput: Omit<
       Order,
       'id' | 'orderNumber' | 'createdAt' | 'trackingHistory'
-    >
+    > & { paymentNote?: string }
   ): Order => {
+    // ➕ নতুন: paymentNote (TrxID) আলাদা করে নেওয়া হচ্ছে
+    const { paymentNote, ...orderData } = orderInput;
+
     const newId = `ord-${Date.now().toString().slice(-6)}`;
 
     const randomSuffix = Math.floor(
@@ -904,7 +907,7 @@ export const StoreProvider: React.FC<{
     const now = new Date().toISOString();
 
     const newOrder: Order = {
-      ...orderInput,
+      ...orderData,
       id: newId,
       orderNumber,
       createdAt: now,
@@ -917,7 +920,7 @@ export const StoreProvider: React.FC<{
             hour: '2-digit',
             minute: '2-digit',
           }),
-          note: `Order placed successfully via ${orderInput.paymentMethod.toUpperCase()}.`,
+          note: `Order placed successfully via ${orderInput.paymentMethod.toUpperCase()}.${paymentNote ? ' ' + paymentNote : ''}`,
         },
       ],
     };

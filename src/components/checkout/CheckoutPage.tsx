@@ -7,7 +7,124 @@ import {
   Tag,
   ArrowLeft,
   Lock,
+  Copy, // ➕ নতুন
+  Check, // ➕ নতুন
 } from 'lucide-react';
+
+// =====================================================================
+// ➕ নতুন: দোকানের বিকাশ / নগদ নম্বর
+// ⚠️ এখানে আপনার নিজের নম্বর বসান। কাস্টমার এই নম্বরে টাকা পাঠাবে।
+// =====================================================================
+const SHOP_BKASH_NUMBER = '01XXXXXXXXX';
+const SHOP_BKASH_TYPE = 'Personal'; // Personal / Agent / Merchant
+const SHOP_NAGAD_NUMBER = '01XXXXXXXXX';
+const SHOP_NAGAD_TYPE = 'Personal';
+
+const PAY_TONES = {
+  bKash: {
+    box: 'bg-pink-50/60 border-pink-200',
+    title: 'text-pink-950',
+    text: 'text-pink-800',
+    input: 'border-pink-300 focus:border-pink-600',
+    badge: 'bg-pink-600',
+  },
+  Nagad: {
+    box: 'bg-orange-50/60 border-orange-200',
+    title: 'text-orange-950',
+    text: 'text-orange-800',
+    input: 'border-orange-300 focus:border-orange-500',
+    badge: 'bg-orange-500',
+  },
+};
+
+interface PaymentInstructionProps {
+  brand: 'bKash' | 'Nagad';
+  shopNumber: string;
+  shopType: string;
+  amount: number;
+  senderNumber: string;
+  onSenderChange: (v: string) => void;
+  trxId: string;
+  onTrxChange: (v: string) => void;
+  copied: boolean;
+  onCopy: () => void;
+}
+
+// ➕ নতুন: টাকা পাঠানোর নিয়ম + দোকানের নম্বর + TrxID ইনপুট
+const PaymentInstruction: React.FC<PaymentInstructionProps> = ({
+  brand,
+  shopNumber,
+  shopType,
+  amount,
+  senderNumber,
+  onSenderChange,
+  trxId,
+  onTrxChange,
+  copied,
+  onCopy,
+}) => {
+  const t = PAY_TONES[brand];
+  return (
+    <div className={`mt-4 p-4 rounded-xl border text-xs space-y-3 ${t.box}`}>
+      <span className={`font-bold block ${t.title}`}>{brand} এ টাকা পাঠানোর নিয়ম</span>
+
+      <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-slate-200">
+        <div className="min-w-0">
+          <span className="text-[11px] text-slate-500 block">
+            {brand} {shopType} নম্বর
+          </span>
+          <span className="font-mono text-base font-extrabold text-slate-900 tracking-wide">
+            {shopNumber}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onCopy}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-[11px] font-bold cursor-pointer ${t.badge}`}
+        >
+          {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? 'কপি হয়েছে' : 'কপি'}
+        </button>
+      </div>
+
+      <ol className={`list-decimal pl-4 space-y-1 ${t.text}`}>
+        <li>
+          {brand} অ্যাপ খুলে <strong>Send Money</strong> এ যান
+        </li>
+        <li>
+          উপরের নম্বরে <strong>৳{amount.toLocaleString()}</strong> পাঠান
+        </li>
+        <li>
+          পাঠানোর পর পাওয়া <strong>TrxID</strong> ও আপনার নম্বর নিচে লিখুন
+        </li>
+      </ol>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <span className={`font-bold block mb-1 ${t.title}`}>যে নম্বর থেকে পাঠিয়েছেন</span>
+          <input
+            type="tel"
+            value={senderNumber}
+            onChange={(e) => onSenderChange(e.target.value)}
+            placeholder="01XXXXXXXXX"
+            className={`w-full px-3 py-2 text-xs rounded-lg border bg-white focus:outline-none ${t.input}`}
+          />
+        </div>
+        <div>
+          <span className={`font-bold block mb-1 ${t.title}`}>Transaction ID (TrxID)</span>
+          <input
+            type="text"
+            value={trxId}
+            onChange={(e) => onTrxChange(e.target.value.toUpperCase())}
+            placeholder="যেমন 9X29A88L1"
+            className={`w-full px-3 py-2 text-xs rounded-lg border bg-white font-mono focus:outline-none ${t.input}`}
+          />
+        </div>
+      </div>
+      <p className={`text-[11px] ${t.text}`}>আমরা TrxID মিলিয়ে আপনার অর্ডার কনফার্ম করব।</p>
+    </div>
+  );
+};
 
 export const CheckoutPage: React.FC = () => {
   const {
@@ -50,6 +167,21 @@ export const CheckoutPage: React.FC = () => {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ➕ নতুন: TrxID ও নম্বর কপির অবস্থা
+  const [bkashTrxId, setBkashTrxId] = useState('');
+  const [nagadTrxId, setNagadTrxId] = useState('');
+  const [copiedKey, setCopiedKey] = useState('');
+
+  const copyNumber = async (num: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(num);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(''), 2000);
+    } catch {
+      showToast('কপি করা যায়নি, নম্বরটি হাতে লিখে নিন।', 'error');
+    }
+  };
 
   // Voucher input
   const [couponInput, setCouponInput] = useState('');
@@ -137,12 +269,13 @@ export const CheckoutPage: React.FC = () => {
       return;
     }
 
-    if (paymentMethod === 'bkash' && !bkashNumber.trim()) {
-      showToast('Please enter your bKash account number.', 'error');
+    // ➕ বদলানো: নম্বরের পাশাপাশি TrxID-ও বাধ্যতামূলক
+    if (paymentMethod === 'bkash' && (!bkashNumber.trim() || !bkashTrxId.trim())) {
+      showToast('বিকাশের নম্বর ও TrxID দিন।', 'error');
       return;
     }
-    if (paymentMethod === 'nagad' && !nagadNumber.trim()) {
-      showToast('Please enter your Nagad account number.', 'error');
+    if (paymentMethod === 'nagad' && (!nagadNumber.trim() || !nagadTrxId.trim())) {
+      showToast('নগদের নম্বর ও TrxID দিন।', 'error');
       return;
     }
     if (paymentMethod === 'card' && (!cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim())) {
@@ -172,7 +305,15 @@ export const CheckoutPage: React.FC = () => {
       };
     });
 
-    // Simulate verified transaction
+    // ➕ নতুন: TrxID ও পাঠানো নম্বর অর্ডারের ট্র্যাকিং নোটে সেভ হবে (অ্যাডমিন মিলিয়ে দেখবে)
+    const paymentNote =
+      paymentMethod === 'bkash'
+        ? `bKash নম্বর: ${bkashNumber.trim()}, TrxID: ${bkashTrxId.trim()}`
+        : paymentMethod === 'nagad'
+        ? `Nagad নম্বর: ${nagadNumber.trim()}, TrxID: ${nagadTrxId.trim()}`
+        : undefined;
+
+    // অর্ডার জমা দেওয়া (বিকাশ/নগদ হলে TrxID মিলিয়ে অ্যাডমিন কনফার্ম করবে)
     setTimeout(() => {
       placeOrder({
         customer: { ...formData, email: user?.email ?? formData.email },
@@ -183,8 +324,10 @@ export const CheckoutPage: React.FC = () => {
         total: cartTotal,
         couponCode: appliedCoupon?.code,
         paymentMethod,
-        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'verified',
-        orderStatus: paymentMethod === 'cod' ? 'Pending' : 'Confirmed',
+        paymentNote, // ➕ নতুন
+        // ➕ বদলানো: পেমেন্ট ও অর্ডার সবসময় Pending, অ্যাডমিন TrxID মিলিয়ে কনফার্ম করবে
+        paymentStatus: 'pending',
+        orderStatus: 'Pending',
       });
       setIsSubmitting(false);
     }, 700);
@@ -375,7 +518,7 @@ export const CheckoutPage: React.FC = () => {
                 </label>
 
                 {/* Credit / Debit Card */}
-                <label
+                {/*<label
                   className={`flex items-start justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${
                     paymentMethod === 'card'
                       ? 'border-indigo-600 bg-indigo-50/30'
@@ -400,7 +543,7 @@ export const CheckoutPage: React.FC = () => {
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
                     Visa / MC
                   </span>
-                </label>
+                </label> */}
 
                 {/* Cash on Delivery */}
                 <label
@@ -432,33 +575,35 @@ export const CheckoutPage: React.FC = () => {
               </div>
 
               {/* Dynamic Payment Details Input */}
+              {/* ➕ বদলানো: বিকাশ ও নগদের ব্লক এখন দোকানের নম্বর + কপি বাটন + TrxID সহ */}
               {paymentMethod === 'bkash' && (
-                <div className="mt-4 p-4 rounded-xl bg-pink-50/60 border border-pink-200 text-xs space-y-2">
-                  <span className="font-bold text-pink-950 block">bKash Account Number</span>
-                  <input
-                    type="tel"
-                    value={bkashNumber}
-                    onChange={(e) => setBkashNumber(e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-pink-300 bg-white focus:outline-none"
-                  />
-                  <p className="text-[11px] text-pink-800">
-                    A simulated bKash transaction ID will be verified upon order placement.
-                  </p>
-                </div>
+                <PaymentInstruction
+                  brand="bKash"
+                  shopNumber={SHOP_BKASH_NUMBER}
+                  shopType={SHOP_BKASH_TYPE}
+                  amount={cartTotal}
+                  senderNumber={bkashNumber}
+                  onSenderChange={setBkashNumber}
+                  trxId={bkashTrxId}
+                  onTrxChange={setBkashTrxId}
+                  copied={copiedKey === 'bkash'}
+                  onCopy={() => copyNumber(SHOP_BKASH_NUMBER, 'bkash')}
+                />
               )}
 
               {paymentMethod === 'nagad' && (
-                <div className="mt-4 p-4 rounded-xl bg-orange-50/60 border border-orange-200 text-xs space-y-2">
-                  <span className="font-bold text-orange-950 block">Nagad Account Number</span>
-                  <input
-                    type="tel"
-                    value={nagadNumber}
-                    onChange={(e) => setNagadNumber(e.target.value)}
-                    placeholder="01XXXXXXXXX"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-orange-300 bg-white focus:outline-none"
-                  />
-                </div>
+                <PaymentInstruction
+                  brand="Nagad"
+                  shopNumber={SHOP_NAGAD_NUMBER}
+                  shopType={SHOP_NAGAD_TYPE}
+                  amount={cartTotal}
+                  senderNumber={nagadNumber}
+                  onSenderChange={setNagadNumber}
+                  trxId={nagadTrxId}
+                  onTrxChange={setNagadTrxId}
+                  copied={copiedKey === 'nagad'}
+                  onCopy={() => copyNumber(SHOP_NAGAD_NUMBER, 'nagad')}
+                />
               )}
 
               {paymentMethod === 'card' && (

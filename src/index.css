@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+body {
+  overflow-x: clip;
+}
 
 @keyframes float {
   0%, 100% {
