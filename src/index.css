@@ -24,4 +24,11 @@ body {
   overflow-wrap: break-word;
 }
 
+.product-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* object-fit: cover er poriborte contain diben */
+  background-color: #ffffff; /* ash-pasher khali jayga shada rakhbe */
+}
+
 
