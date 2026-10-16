@@ -185,6 +185,7 @@ export const FeaturedDeals: React.FC = () => {
         ))}
       </div>
 
+
       {/* 2.1 Featured 4 Smart Gadgets with Dedicated Setup Guide Showcase */}
       {smartGadgets.length > 0 && (
         <div className="mb-14 bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 text-white rounded-3xl p-6 sm:p-8 border border-indigo-800/60 shadow-xl relative overflow-hidden">
