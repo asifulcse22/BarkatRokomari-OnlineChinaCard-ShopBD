@@ -20,12 +20,14 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { CartDrawer } from './components/cart/CartDrawer';
 import { ProductQuickViewModal } from './components/product/ProductQuickViewModal';
 import { ToastContainer } from './components/common/ToastContainer';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AdminLogin } from './components/auth/AdminLogin';
 import { ArrowUp } from 'lucide-react';
 
 
 const MainContent: React.FC = () => {
   const { viewMode, activeCustomerPage } = useStore();
+  const { isAdmin } = useAuth();
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Monitor scroll for back to top button
@@ -49,7 +51,7 @@ const MainContent: React.FC = () => {
   const pageKey = viewMode === 'admin' ? 'admin' : activeCustomerPage;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc] text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-slate-100 text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
       {/* Toast notifications */}
       <ToastContainer />
 
@@ -65,13 +67,13 @@ const MainContent: React.FC = () => {
         <AnimatePresence mode="wait">
           <motion.div
             key={pageKey}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.28, ease: 'easeInOut' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
           >
             {viewMode === 'admin' ? (
-              <AdminDashboard />
+              isAdmin ? <AdminDashboard /> : <AdminLogin />
             ) : (
               <>
                 {activeCustomerPage === 'home' && (
@@ -99,16 +101,14 @@ const MainContent: React.FC = () => {
       <AnimatePresence>
         {showScrollTop && (
           <motion.button
-            initial={{ opacity: 0, scale: 0.5, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, y: 20 }}
-            whileHover={{ scale: 1.15, y: -3 }}
-            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={scrollToTop}
-            className="fixed bottom-6 right-6 z-40 w-11 h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 flex items-center justify-center cursor-pointer border border-white/20 backdrop-blur-xs"
+            className="fixed bottom-6 right-6 z-40 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition-colors hover:text-brand-600"
             aria-label="Scroll to top"
           >
-            <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+            <ArrowUp className="h-5 w-5" />
           </motion.button>
         )}
       </AnimatePresence>

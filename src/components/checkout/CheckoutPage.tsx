@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { PaymentMethod } from '../../types';
-import { useAuth } from '../../context/AuthContext';
+
 import {
   ShieldCheck,
   Tag,
@@ -144,20 +144,18 @@ export const CheckoutPage: React.FC = () => {
     showToast,
   } = useStore();
 
-  // আগের অর্ডার থাকলে সেই কাস্টমারের তথ্য অটো-ফিল হবে, না থাকলে ফর্ম খালি থাকবে।
-  const { user, loading: authLoading, openAuth } = useAuth();
-  const lastCustomer = orders.find((o) => user && o.customer.email?.toLowerCase() === user.email.toLowerCase())?.customer;
+  
 
   // Customer Form State
   const [formData, setFormData] = useState({
-    name: lastCustomer?.name ?? user?.name ?? '',
-    email: user?.email ?? lastCustomer?.email ?? '',
-    phone: lastCustomer?.phone ?? user?.phone ?? '',
-    address: lastCustomer?.address ?? '',
-    city: lastCustomer?.city ?? '',
-    postalCode: lastCustomer?.postalCode ?? '',
-    country: lastCustomer?.country ?? 'Bangladesh',
-  });
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  postalCode: '',
+  country: 'Bangladesh',
+});
 
   // Payment Selection
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
@@ -188,16 +186,7 @@ export const CheckoutPage: React.FC = () => {
   const [couponError, setCouponError] = useState('');
 
   // লগইন পরে লোড হলেও ফর্মে নাম/ফোন/ইমেইল বসে যাবে
-  useEffect(() => {
-    if (user) {
-      setFormData((f) => ({
-        ...f,
-        name: f.name || user.name,
-        phone: f.phone || user.phone,
-        email: user.email,
-      }));
-    }
-  }, [user]);
+  
 
   if (cart.length === 0) {
     return (
@@ -216,40 +205,7 @@ export const CheckoutPage: React.FC = () => {
     );
   }
 
-  // লগইন ছাড়া চেকআউট করা যাবে না
-  if (!user) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xs">
-          <h2 className="text-lg font-extrabold text-slate-950 mb-2">অর্ডার করতে লগইন করুন</h2>
-          <p className="text-xs text-slate-500 mb-6">
-            {authLoading
-              ? 'একটু অপেক্ষা করুন...'
-              : 'আপনার কার্টের পণ্যগুলো সংরক্ষিত আছে। লগইন বা রেজিস্ট্রেশন করে অর্ডার সম্পন্ন করুন।'}
-          </p>
-          {!authLoading && (
-            <div className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => openAuth('login')}
-                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 cursor-pointer"
-              >
-                লগইন
-              </button>
-              <button
-                type="button"
-                onClick={() => openAuth('register')}
-                className="px-6 py-2.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
-              >
-                রেজিস্ট্রেশন
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
+ 
   const handleCouponSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError('');
@@ -316,7 +272,7 @@ export const CheckoutPage: React.FC = () => {
     // অর্ডার জমা দেওয়া (বিকাশ/নগদ হলে TrxID মিলিয়ে অ্যাডমিন কনফার্ম করবে)
     setTimeout(() => {
       placeOrder({
-        customer: { ...formData, email: user?.email ?? formData.email },
+        customer: { ...formData, email: formData?.email ?? formData.email },
         items: orderItems,
         subtotal: cartSubtotal,
         discount: cartDiscount,
@@ -395,16 +351,14 @@ export const CheckoutPage: React.FC = () => {
 
                 <div className="sm:col-span-2">
                   <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Email Address *
+                    Email Address (optional)
                   </label>
                   <input
                     type="email"
-                    required
                     value={formData.email}
-                    readOnly={!!user}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="name@example.com"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-brand-600"
                   />
                 </div>
 

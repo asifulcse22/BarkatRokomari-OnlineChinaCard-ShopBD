@@ -1,27 +1,35 @@
-
 @import "tailwindcss";
+
+@theme {
+  /* Brand color. Rong bodlate shudhu ei 5 ta line bodlaben */
+  --color-brand-50: #fff4ed;
+  --color-brand-100: #ffe6d5;
+  --color-brand-600: #cc4310;
+  --color-brand-700: #b23a0c;
+  --color-brand-800: #8f2f0a;
+
+  --font-sans: 'Inter', 'Noto Sans Bengali', system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+}
 
 @layer base {
   html,
   body {
-    font-family: 'Hind Siliguri', 'Plus Jakarta Sans', 'Inter',
-      system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overflow-x: hidden;
+  }
+
+  body {
+    overflow-x: clip;
   }
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-3px);
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -39,4 +47,5 @@
   height: 100%;
   object-fit: contain;
   background-color: #ffffff;
+  
 }

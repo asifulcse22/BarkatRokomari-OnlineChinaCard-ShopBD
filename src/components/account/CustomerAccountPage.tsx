@@ -1,19 +1,35 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
-import { useAuth } from '../../context/AuthContext';
 import { Order } from '../../types';
 import {
-  Package,
-  Heart,
-  MapPin,
-  LifeBuoy,
   Truck,
+  Heart,
+  LifeBuoy,
   CheckCircle2,
-  Trash2,
   ShoppingBag,
-  Send,
+  Trash2,
   Search,
+  Phone,
 } from 'lucide-react';
+
+// File: src/components/account/CustomerAccountPage.tsx
+// Login charai kaj kore: Order track (order number + phone), Wishlist, Support.
+
+const SUPPORT_PHONE = '+8801911561232';
+const WHATSAPP_NUMBER = '8801911561232';
+
+type Tab = 'tracking' | 'wishlist' | 'support';
+
+const statusCls = (s: string) =>
+  s === 'Delivered'
+    ? 'bg-emerald-50 text-emerald-700'
+    : s === 'Cancelled'
+    ? 'bg-rose-50 text-rose-700'
+    : s === 'Return Requested'
+    ? 'bg-amber-50 text-amber-700'
+    : 'bg-brand-50 text-brand-700';
+
+const digitsOnly = (v: string) => v.replace(/\D/g, '');
 
 export const CustomerAccountPage: React.FC = () => {
   const {
@@ -22,443 +38,263 @@ export const CustomerAccountPage: React.FC = () => {
     products,
     addToCart,
     toggleWishlist,
-    cancelOrder,
-    requestReturn,
     activeOrderToTrack,
     setActiveCustomerPage,
-    showToast,
   } = useStore();
-  const { user, loading: authLoading, openAuth, logout } = useAuth();
 
-  // শুধু এই ইউজারের নিজের অর্ডারগুলো দেখাবে (ইমেইল মিলিয়ে)
-  const orders = useMemo(
-    () =>
-      user
-        ? allOrders.filter((o) => o.customer.email?.toLowerCase() === user.email.toLowerCase())
-        : [],
-    [allOrders, user]
-  );
+  // Header theke wishlist/support click korle shei tab-e khulbe
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    try {
+      const t = sessionStorage.getItem('sz-account-tab');
+      if (t === 'wishlist' || t === 'support') return t;
+    } catch {
+      // ignore
+    }
+    return 'tracking';
+  });
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'tracking' | 'wishlist' | 'addresses' | 'support'>('orders');
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('sz-account-tab');
+    } catch {
+      // ignore
+    }
+  }, []);
 
-  // Cancel / Return modal states
-  const [targetOrderForAction, setTargetOrderForAction] = useState<Order | null>(null);
-  const [actionType, setActionType] = useState<'cancel' | 'return' | null>(null);
-  const [actionReason, setActionReason] = useState('');
+  // Track order
+  const [orderNumber, setOrderNumber] = useState(activeOrderToTrack?.orderNumber ?? '');
+  const [phone, setPhone] = useState(activeOrderToTrack?.customer?.phone ?? '');
+  const [result, setResult] = useState<Order | null>(activeOrderToTrack ?? null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Support ticket form
-  const [ticketSubject, setTicketSubject] = useState('');
-  const [ticketMessage, setTicketMessage] = useState('');
-  const [ticketSuccess, setTicketSuccess] = useState(false);
-
-  // Tracking search input
-  const [trackSearchOrderNum, setTrackSearchOrderNum] = useState(
-    activeOrderToTrack ? activeOrderToTrack.orderNumber : ''
-  );
-
-  const matchedTrackOrder = orders.find(
-    (o) => o.orderNumber.toUpperCase() === trackSearchOrderNum.trim().toUpperCase()
-  );
-
-  // প্রোফাইল তথ্য সর্বশেষ অর্ডারের কাস্টমার থেকে আসে। অর্ডার না থাকলে Guest দেখাবে।
-  const profile = orders[0]?.customer;
-  const profileName = user?.name || profile?.name || 'Guest Customer';
-  const profileInitials =
-    profileName
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join('')
-      .toUpperCase() || 'G';
-  const profileSubtitle = user ? [user.email, user.phone].filter(Boolean).join(' · ') : '';
-
-  // অর্ডারগুলোর ডেলিভারি ঠিকানা থেকে unique ঠিকানার তালিকা
-  const savedAddresses = useMemo(() => {
-    const seen = new Map<string, Order['customer']>();
-    orders.forEach((o) => {
-      const key = `${o.customer.address}|${o.customer.city}`.toLowerCase();
-      if (!seen.has(key)) seen.set(key, o.customer);
-    });
-    return Array.from(seen.values());
-  }, [orders]);
-
-  // লগইন ছাড়া একাউন্ট পেজ দেখা যাবে না
-  if (!user) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xs">
-          <h2 className="text-lg font-extrabold text-slate-950 mb-2">আপনার একাউন্টে লগইন করুন</h2>
-          <p className="text-xs text-slate-500 mb-6">
-            {authLoading
-              ? 'একটু অপেক্ষা করুন...'
-              : 'আপনার অর্ডার, ট্র্যাকিং ও উইশলিস্ট দেখতে লগইন বা রেজিস্ট্রেশন করুন।'}
-          </p>
-          {!authLoading && (
-            <div className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => openAuth('login')}
-                className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 cursor-pointer"
-              >
-                লগইন
-              </button>
-              <button
-                type="button"
-                onClick={() => openAuth('register')}
-                className="px-6 py-2.5 bg-slate-100 text-slate-800 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
-              >
-                রেজিস্ট্রেশন
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const handleOpenAction = (order: Order, type: 'cancel' | 'return') => {
-    setTargetOrderForAction(order);
-    setActionType(type);
-    setActionReason('');
-  };
-
-  const handleConfirmAction = (e: React.FormEvent) => {
+  const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetOrderForAction || !actionReason.trim()) return;
+    setError('');
+    setResult(null);
 
-    if (actionType === 'cancel') {
-      cancelOrder(targetOrderForAction.id, actionReason.trim());
-    } else if (actionType === 'return') {
-      requestReturn(targetOrderForAction.id, actionReason.trim());
+    const num = orderNumber.trim().toUpperCase();
+    const digits = digitsOnly(phone);
+    if (!num || digits.length < 10) {
+      setError('অর্ডার নম্বর ও মোবাইল নম্বর দিন।');
+      return;
     }
 
-    setTargetOrderForAction(null);
-    setActionType(null);
-    setActionReason('');
+    // Ei session-e kora order thakle sheta age dekhabe
+    const local = allOrders.find(
+      (o) =>
+        o.orderNumber.toUpperCase() === num &&
+        digitsOnly(o.customer.phone || '').slice(-10) === digits.slice(-10)
+    );
+    if (local) {
+      setResult(local);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/orders/track?orderNumber=${encodeURIComponent(num)}&phone=${encodeURIComponent(digits)}`
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        setError(data?.message || 'এই তথ্য দিয়ে কোনো অর্ডার পাওয়া যায়নি। নম্বর দুটি আবার চেক করুন।');
+      } else {
+        setResult(data.order);
+      }
+    } catch {
+      setError('সার্ভারের সাথে যোগাযোগ করা যাচ্ছে না। ইন্টারনেট চেক করুন।');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSupportSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticketSubject.trim() || !ticketMessage.trim()) return;
-    setTicketSuccess(true);
-    setTicketSubject('');
-    setTicketMessage('');
-    showToast('Customer support inquiry created! Ticket ID #TK-9124');
-    setTimeout(() => setTicketSuccess(false), 4000);
-  };
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: 'tracking', label: 'Track Order', icon: Truck },
+    { id: 'wishlist', label: `Wishlist (${wishlist.length})`, icon: Heart },
+    { id: 'support', label: 'Support', icon: LifeBuoy },
+  ];
+
+  const inputCls =
+    'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Account Header */}
-      <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-xs mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xl shadow-xs">
-            {profileInitials}
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-slate-950">{profileName}</h1>
-            <p className="text-xs text-slate-500">{profileSubtitle}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
+    <div className="mx-auto max-w-5xl px-4 py-8">
+      {/* Tabs */}
+      <div className="mb-8 flex gap-6 overflow-x-auto border-b border-slate-200">
+        {tabs.map(({ id, label, icon: Icon }) => (
           <button
+            key={id}
             type="button"
-            onClick={logout}
-            className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold cursor-pointer transition-colors"
+            onClick={() => setActiveTab(id)}
+            className={`flex cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 pb-3 text-sm font-medium transition-colors ${
+              activeTab === id
+                ? 'border-brand-600 text-brand-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
           >
-            লগআউট
+            <Icon className="h-4 w-4" />
+            {label}
           </button>
-          <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Orders</span>
-            <span className="font-extrabold text-slate-900">{orders.length} placed</span>
-          </div>
-          <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-            <span className="text-slate-400 block text-[10px] uppercase font-bold">Wishlist</span>
-            <span className="font-extrabold text-slate-900">{wishlist.length} saved</span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Account Navigation Tabs */}
-      <div className="flex border-b border-slate-200 gap-6 mb-8 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveTab('orders')}
-          className={`pb-3 text-xs font-bold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'orders'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          <span>My Orders ({orders.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('tracking')}
-          className={`pb-3 text-xs font-bold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'tracking'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Truck className="w-4 h-4" />
-          <span>Live Order Tracking</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('wishlist')}
-          className={`pb-3 text-xs font-bold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'wishlist'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Heart className="w-4 h-4" />
-          <span>Wishlist ({wishlist.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('addresses')}
-          className={`pb-3 text-xs font-bold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'addresses'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <MapPin className="w-4 h-4" />
-          <span>Delivery Addresses</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('support')}
-          className={`pb-3 text-xs font-bold transition-colors border-b-2 flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeTab === 'support'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <LifeBuoy className="w-4 h-4" />
-          <span>Customer Support</span>
-        </button>
-      </div>
-
-      {/* Tab 1: Orders List */}
-      {activeTab === 'orders' && (
-        <div className="space-y-6">
-          {orders.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center">
-              <Package className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-900 mb-1">No orders placed yet</h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Explore our store and pick items to see them tracked here.
-              </p>
-              <button
-                onClick={() => setActiveCustomerPage('catalog')}
-                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl cursor-pointer"
-              >
-                Browse Catalog
-              </button>
-            </div>
-          ) : (
-            orders.map((order) => {
-              const isCancellable = order.orderStatus === 'Pending' || order.orderStatus === 'Confirmed';
-              const isReturnable = order.orderStatus === 'Delivered';
-
-              return (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4"
-                >
-                  {/* Order Top Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                    <div>
-                      <span className="text-xs font-mono font-bold text-slate-900 block">
-                        {order.orderNumber}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        Placed on {new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {/* Status indicator */}
-                      <span
-                        className={`px-2.5 py-1 rounded-md text-xs font-bold ${
-                          order.orderStatus === 'Delivered'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : order.orderStatus === 'Cancelled'
-                            ? 'bg-rose-50 text-rose-700'
-                            : order.orderStatus === 'Return Requested'
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-indigo-50 text-indigo-700'
-                        }`}
-                      >
-                        {order.orderStatus}
-                      </span>
-                      <span className="text-xs font-extrabold text-slate-900">
-                        ৳{order.total.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div className="space-y-3">
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-xs">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-12 h-12 rounded-lg object-cover bg-slate-50 border border-slate-100 shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-slate-900 truncate">{item.title}</p>
-                          <p className="text-[11px] text-slate-400">
-                            Qty: {item.quantity} {item.variations && `· ${item.variations}`}
-                          </p>
-                        </div>
-                        <span className="font-semibold text-slate-900">
-                          ৳{(item.price * item.quantity).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Footer Actions */}
-                  <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <span className="text-slate-500">
-                      Payment: <strong className="text-slate-800 uppercase">{order.paymentMethod}</strong> ({order.paymentStatus})
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setTrackSearchOrderNum(order.orderNumber);
-                          setActiveTab('tracking');
-                        }}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-lg transition-colors cursor-pointer"
-                      >
-                        Track Shipment
-                      </button>
-
-                      {isCancellable && (
-                        <button
-                          onClick={() => handleOpenAction(order, 'cancel')}
-                          className="px-3 py-1.5 text-rose-600 hover:bg-rose-50 font-semibold rounded-lg transition-colors cursor-pointer"
-                        >
-                          Cancel Order
-                        </button>
-                      )}
-
-                      {isReturnable && (
-                        <button
-                          onClick={() => handleOpenAction(order, 'return')}
-                          className="px-3 py-1.5 text-amber-700 hover:bg-amber-50 font-semibold rounded-lg transition-colors cursor-pointer"
-                        >
-                          Request Return
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* Tab 2: Live Order Tracking */}
+      {/* Track order */}
       {activeTab === 'tracking' && (
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-            <h2 className="text-sm font-bold text-slate-950 mb-3 flex items-center gap-2">
-              <Search className="w-4 h-4 text-indigo-600" />
-              <span>Track Your Package</span>
-            </h2>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={trackSearchOrderNum}
-                onChange={(e) => setTrackSearchOrderNum(e.target.value)}
-                placeholder="Enter your Order Number (SZ-2026-XXXX)"
-                className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 uppercase bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600 font-mono"
-              />
+        <div className="mx-auto max-w-2xl space-y-6">
+          <form
+            onSubmit={handleTrack}
+            className="space-y-4 rounded-xl border border-slate-200 bg-white p-6"
+          >
+            <div>
+              <h1 className="text-lg font-semibold text-slate-900">অর্ডার ট্র্যাক করুন</h1>
+              <p className="text-sm text-slate-500">
+                অর্ডার নম্বর ও অর্ডারের সময় দেওয়া মোবাইল নম্বর লিখুন।
+              </p>
             </div>
-          </div>
 
-          {matchedTrackOrder ? (
-            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">অর্ডার নম্বর</span>
+                <input
+                  type="text"
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value)}
+                  placeholder="SZ-123456"
+                  className={`${inputCls} font-mono uppercase`}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">মোবাইল নম্বর</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="01XXXXXXXXX"
+                  className={inputCls}
+                />
+              </label>
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+            >
+              <Search className="h-4 w-4" />
+              {loading ? 'খোঁজা হচ্ছে...' : 'ট্র্যাক করুন'}
+            </button>
+          </form>
+
+          {result && (
+            <div className="space-y-6 rounded-xl border border-slate-200 bg-white p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Shipment Tracking
-                  </span>
-                  <span className="text-base font-extrabold text-slate-900 font-mono">
-                    {matchedTrackOrder.orderNumber}
+                  <span className="block text-xs text-slate-500">অর্ডার নম্বর</span>
+                  <span className="font-mono text-base font-semibold text-slate-900">
+                    {result.orderNumber}
                   </span>
                 </div>
-                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg">
-                  {matchedTrackOrder.orderStatus}
+                <span
+                  className={`rounded-md px-2.5 py-1 text-xs font-semibold ${statusCls(
+                    result.orderStatus
+                  )}`}
+                >
+                  {result.orderStatus}
                 </span>
               </div>
 
-              {/* Milestones timeline */}
-              <div className="space-y-6 relative pl-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                {matchedTrackOrder.trackingHistory.map((step, idx) => (
-                  <div key={idx} className="relative">
-                    <span className="absolute -left-6 top-0.5 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center ring-4 ring-white">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    </span>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-900">{step.status}</span>
-                        <span className="text-[11px] text-slate-400">{step.timestamp}</span>
+              {/* Timeline */}
+              <ol className="space-y-5">
+                {result.trackingHistory.map((step, idx) => (
+                  <li key={idx} className="flex gap-3">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <span className="text-sm font-semibold text-slate-900">{step.status}</span>
+                        <span className="text-xs text-slate-400">{step.timestamp}</span>
                       </div>
-                      <p className="text-xs text-slate-600 mt-0.5">{step.note}</p>
+                      <p className="text-sm text-slate-600">{step.note}</p>
                     </div>
+                  </li>
+                ))}
+              </ol>
+
+              {/* Items */}
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                {result.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 text-sm">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="h-12 w-12 shrink-0 rounded border border-slate-100 bg-white object-contain p-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-slate-900">{item.title}</p>
+                      <p className="text-xs text-slate-500">
+                        Qty: {item.quantity}
+                        {item.variations ? ` · ${item.variations}` : ''}
+                      </p>
+                    </div>
+                    <span className="font-medium text-slate-900">
+                      ৳{(item.price * item.quantity).toLocaleString()}
+                    </span>
                   </div>
                 ))}
+                <div className="flex justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-slate-900">
+                  <span>মোট</span>
+                  <span>৳{result.total.toLocaleString()}</span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Payment: <span className="uppercase">{result.paymentMethod}</span> ({result.paymentStatus})
+                </p>
               </div>
 
-              {/* Delivery recipient info */}
-              <div className="pt-4 border-t border-slate-100 text-xs text-slate-600">
-                <span className="font-bold text-slate-900 block mb-1">Destination Address:</span>
-                <p>
-                  {matchedTrackOrder.customer.name} · {matchedTrackOrder.customer.address}, {matchedTrackOrder.customer.city}
-                </p>
-                <p className="text-slate-400 mt-0.5">Phone: {matchedTrackOrder.customer.phone}</p>
+              <div className="border-t border-slate-100 pt-4 text-sm text-slate-600">
+                <span className="mb-1 block font-semibold text-slate-900">ডেলিভারি ঠিকানা</span>
+                {result.customer.name} · {result.customer.address}, {result.customer.city}
               </div>
-            </div>
-          ) : (
-            <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-xs text-slate-500">
-              {trackSearchOrderNum.trim()
-                ? 'এই অর্ডার নম্বরে কোনো অর্ডার পাওয়া যায়নি। নম্বরটি আবার চেক করুন।'
-                : 'Please enter an active order number above to view tracking progress.'}
+
+              <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+                অর্ডার বাতিল বা রিটার্ন করতে চাইলে{' '}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('support')}
+                  className="cursor-pointer font-semibold text-brand-600 hover:underline"
+                >
+                  Support
+                </button>{' '}
+                এ যোগাযোগ করুন।
+              </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Tab 3: Wishlist */}
+      {/* Wishlist */}
       {activeTab === 'wishlist' && (
         <div>
           {wishlist.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center">
-              <Heart className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-900 mb-1">Your wishlist is empty</h3>
-              <p className="text-xs text-slate-500 mb-4">
-                Save products you love so you can easily purchase them later.
-              </p>
+            <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
+              <Heart className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+              <h2 className="mb-1 text-base font-semibold text-slate-900">Wishlist খালি</h2>
+              <p className="mb-4 text-sm text-slate-500">পছন্দের পণ্য সেভ করে রাখুন, পরে কিনতে পারবেন।</p>
               <button
+                type="button"
                 onClick={() => setActiveCustomerPage('catalog')}
-                className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl cursor-pointer"
+                className="cursor-pointer rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
               >
-                Explore Products
+                পণ্য দেখুন
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {wishlist.map((id) => {
                 const product = products.find((p) => p.id === id);
                 if (!product) return null;
@@ -466,41 +302,41 @@ export const CustomerAccountPage: React.FC = () => {
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-2xl border border-slate-200/80 p-4 flex flex-col justify-between"
+                    className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3"
                   >
                     <div>
-                      <div className="aspect-square bg-slate-50 rounded-xl overflow-hidden mb-3">
+                      <div className="mb-3 aspect-square overflow-hidden rounded-lg bg-white">
                         <img
                           src={product.images[0]}
                           alt={product.title}
-                          className="w-full h-full object-cover"
+                          className="h-full w-full object-contain"
                         />
                       </div>
-                      <span className="text-[11px] text-slate-500 block mb-1">
-                        {product.category}
-                      </span>
-                      <h4 className="text-xs font-bold text-slate-900 line-clamp-2 mb-2">
+                      <span className="mb-1 block text-xs text-slate-500">{product.category}</span>
+                      <h3 className="mb-2 line-clamp-2 text-sm font-medium text-slate-900">
                         {product.title}
-                      </h4>
-                      <span className="text-sm font-extrabold text-slate-900 block mb-3">
+                      </h3>
+                      <span className="mb-3 block text-sm font-semibold text-slate-900">
                         ৳{(product.salePrice || product.regularPrice).toLocaleString()}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
                       <button
+                        type="button"
                         onClick={() => addToCart(product.id, 1)}
-                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
                       >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Move to Cart</span>
+                        <ShoppingBag className="h-4 w-4" />
+                        Add to cart
                       </button>
                       <button
+                        type="button"
                         onClick={() => toggleWishlist(product.id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                        title="Remove"
+                        className="cursor-pointer rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-rose-600"
+                        aria-label="Remove from wishlist"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -511,153 +347,31 @@ export const CustomerAccountPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 4: Delivery Addresses */}
-      {activeTab === 'addresses' && (
-        <div>
-          {savedAddresses.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center max-w-4xl">
-              <MapPin className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-              <h3 className="text-sm font-bold text-slate-900 mb-1">কোনো ঠিকানা সেভ করা নেই</h3>
-              <p className="text-xs text-slate-500">
-                অর্ডার করার সময় যে ঠিকানা দেবেন সেটি এখানে দেখা যাবে।
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-              {savedAddresses.map((addr, idx) => (
-                <div
-                  key={`${addr.address}-${idx}`}
-                  className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-2"
-                >
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      idx === 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    {idx === 0 ? 'Default Delivery Address' : 'Saved Address'}
-                  </span>
-                  <p className="text-sm font-bold text-slate-900">{addr.name}</p>
-                  <p className="text-xs text-slate-500">{addr.address}</p>
-                  <p className="text-xs text-slate-500">
-                    {[addr.city, addr.postalCode].filter(Boolean).join(' - ')}
-                    {addr.country ? `, ${addr.country}` : ''}
-                  </p>
-                  <p className="text-xs text-slate-500">Phone: {addr.phone}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 5: Customer Support */}
+      {/* Support */}
       {activeTab === 'support' && (
-        <div className="max-w-2xl bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
-          <div>
-            <h2 className="text-sm font-bold text-slate-950 mb-1 flex items-center gap-2">
-              <LifeBuoy className="w-4 h-4 text-indigo-600" />
-              <span>Contact Store Support Helpdesk</span>
-            </h2>
-            <p className="text-xs text-slate-500">
-              Have an issue with delivery, payment, or warranty? Submit a ticket below.
-            </p>
-          </div>
+        <div className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6">
+          <h1 className="mb-1 text-lg font-semibold text-slate-900">সাহায্য দরকার?</h1>
+          <p className="mb-5 text-sm text-slate-600">
+            ডেলিভারি, পেমেন্ট, ওয়ারেন্টি, অর্ডার বাতিল বা রিটার্ন, যেকোনো বিষয়ে কল করুন বা হোয়াটসঅ্যাপে মেসেজ দিন।
+            অর্ডার নম্বর সাথে রাখলে দ্রুত সাহায্য করা যাবে।
+          </p>
 
-          {ticketSuccess && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Inquiry submitted! Our support team will reply within 2 hours.</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSupportSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Inquiry Topic / Subject
-              </label>
-              <input
-                type="text"
-                required
-                value={ticketSubject}
-                onChange={(e) => setTicketSubject(e.target.value)}
-                placeholder="e.g. Delivery reschedule request"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Message & Specific Details
-              </label>
-              <textarea
-                required
-                rows={4}
-                value={ticketMessage}
-                onChange={(e) => setTicketMessage(e.target.value)}
-                placeholder="Provide order number or describe your request..."
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a
+              href={`tel:${SUPPORT_PHONE}`}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:border-brand-600 hover:text-brand-600"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Submit Support Ticket</span>
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Cancel or Return Reason Dialog */}
-      {targetOrderForAction && actionType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs"
-            onClick={() => setTargetOrderForAction(null)}
-          />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6 z-10 animate-in zoom-in-95 duration-150">
-            <h3 className="text-sm font-bold text-slate-950 mb-1">
-              {actionType === 'cancel' ? 'Cancel Order' : 'Request Return / Refund'}
-            </h3>
-            <p className="text-xs text-slate-500 mb-4 font-mono">
-              Order: {targetOrderForAction.orderNumber}
-            </p>
-
-            <form onSubmit={handleConfirmAction} className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Reason for {actionType === 'cancel' ? 'cancellation' : 'return'}
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={actionReason}
-                  onChange={(e) => setActionReason(e.target.value)}
-                  placeholder="e.g. Changed mind / ordered wrong variant / damaged in transit..."
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-indigo-600"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setTargetOrderForAction(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  className={`px-4 py-2 text-xs font-bold text-white rounded-lg cursor-pointer ${
-                    actionType === 'cancel' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'
-                  }`}
-                >
-                  {actionType === 'cancel' ? 'Confirm Cancellation' : 'Submit Return Request'}
-                </button>
-              </div>
-            </form>
+              <Phone className="h-4 w-4" />
+              {SUPPORT_PHONE}
+            </a>
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#25D366] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1fb856]"
+            >
+              হোয়াটসঅ্যাপে মেসেজ দিন
+            </a>
           </div>
         </div>
       )}

@@ -718,18 +718,16 @@ app.delete('/api/products/:id', requireAdmin, async (req: Request, res: Response
 });
 
 // GET orders: লগইন করা কাস্টমার শুধু নিজের অর্ডার পাবে, admin সব অর্ডার পাবে
+// GET orders: shudhu admin shob order dekhte parbe. Baki sobar jonno khali list.
 app.get('/api/orders', async (req: Request, res: Response) => {
   const authUser = await getAuthUser(req);
-  if (!authUser) return res.json({ success: true, source: 'auth', data: [] });
+  if (!authUser || authUser.role !== 'admin') {
+    return res.json({ success: true, source: 'auth', data: [] });
+  }
 
   if (sql) {
     try {
-      const rows =
-        authUser.role === 'admin'
-          ? await sql`SELECT * FROM orders ORDER BY created_at DESC;`
-          : await sql`SELECT * FROM orders
-                      WHERE lower(customer->>'email') = ${authUser.email.toLowerCase()}
-                      ORDER BY created_at DESC;`;
+      const rows = await sql`SELECT * FROM orders ORDER BY created_at DESC;`;
       return res.json({ success: true, source: 'neon', data: rows.map(mapRowToOrder) });
     } catch (err: any) {
       console.error('[Neon DB Error in GET /api/orders]:', err);
@@ -739,18 +737,48 @@ app.get('/api/orders', async (req: Request, res: Response) => {
   return res.json({ success: true, source: 'mock', data: [] });
 });
 
+// Guest order track: order number + phone mile gele order dekhabe
+app.get('/api/orders/track', async (req: Request, res: Response) => {
+  const orderNumber = String(req.query.orderNumber || '').trim().toUpperCase();
+  const digits = String(req.query.phone || '').replace(/\D/g, '');
+  const notFound = {
+    success: false,
+    message: 'এই তথ্য দিয়ে কোনো অর্ডার পাওয়া যায়নি। নম্বর দুটি আবার চেক করুন।',
+  };
+
+  if (!orderNumber || digits.length < 10 || !sql) {
+    return res.status(404).json(notFound);
+  }
+
+  try {
+    const rows = await sql`SELECT * FROM orders WHERE upper(order_number) = ${orderNumber} LIMIT 1;`;
+    const order = rows[0] ? mapRowToOrder(rows[0]) : null;
+    const orderDigits = String(order?.customer?.phone || '').replace(/\D/g, '');
+
+    if (!order || orderDigits.slice(-10) !== digits.slice(-10)) {
+      return res.status(404).json(notFound);
+    }
+    return res.json({ success: true, order });
+  } catch (err) {
+    console.error('[Neon DB Error in GET /api/orders/track]:', err);
+    return res.status(404).json(notFound);
+  }
+});
+
 // POST create an order in Neon (লগইন বাধ্যতামূলক)
 app.post('/api/orders', async (req: Request, res: Response) => {
-  const authUser = await getAuthUser(req);
-  if (!authUser) return res.status(401).json({ error: 'অর্ডার করতে লগইন করুন।' });
+  const authUser = await getAuthUser(req); // login thakle use hobe, na thakleo cholbe
+ 
 
-  const o = req.body;
+ const o = req.body;
   if (!o || !o.items || !o.customer) {
     return res.status(400).json({ error: 'Order items and customer details are required' });
   }
+  if (!o.customer.name || !o.customer.phone || !o.customer.address) {
+    return res.status(400).json({ error: 'নাম, মোবাইল নম্বর ও ঠিকানা দিন।' });
+  }
 
-  // অর্ডারের ইমেইল সবসময় লগইন করা ইউজারের ইমেইল হবে (অন্যের নামে অর্ডার ঠেকাতে)
-  const customer = { ...o.customer, email: authUser.email };
+  const customer = { ...o.customer, email: authUser?.email ?? o.customer.email ?? '' };
 
   const id = o.id || `ord-${Date.now()}`;
   const orderNumber = o.orderNumber || `SZ-${Math.floor(100000 + Math.random() * 900000)}`;
