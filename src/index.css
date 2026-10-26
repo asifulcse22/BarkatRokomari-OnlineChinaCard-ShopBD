@@ -21,6 +21,10 @@
     text-rendering: optimizeLegibility;
   }
 
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     overflow-x: clip;
   }
@@ -47,5 +51,4 @@
   height: 100%;
   object-fit: contain;
   background-color: #ffffff;
-  
 }

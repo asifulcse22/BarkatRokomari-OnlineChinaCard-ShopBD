@@ -355,7 +355,7 @@ export const Header: React.FC = () => {
       <nav aria-label="Main Navigation" className="bg-slate-900">
         <div className="mx-auto flex h-12 max-w-[1600px] items-center gap-6 px-4 sm:px-6 lg:px-8">
           <div
-            className={`relative shrink-0 ${isHome ? 'lg:hidden' : ''}`}
+            className={`relative w-full md:w-auto md:shrink-0 ${isHome ? 'lg:hidden' : ''}`}
             ref={categoryRef}
           >
             <button
@@ -363,10 +363,11 @@ export const Header: React.FC = () => {
               onClick={() => setIsCategoryMenuOpen((prev) => !prev)}
               aria-expanded={isCategoryMenuOpen}
               aria-haspopup="true"
-              className="flex cursor-pointer items-center gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+              className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700 md:w-auto md:justify-start"
             >
               <Menu className="h-4 w-4" />
-              <span>All Categories</span>
+              <span className="md:hidden">Menu</span>
+              <span className="hidden md:inline">All Categories</span>
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${
                   isCategoryMenuOpen ? 'rotate-180' : ''
@@ -381,8 +382,31 @@ export const Header: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute left-0 top-full z-50 mt-1 max-h-[70vh] w-64 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                  className="absolute left-0 top-full z-50 mt-1 max-h-[70vh] w-full overflow-y-auto md:w-64 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
                 >
+                  <div className="border-b border-slate-100 pb-1 md:hidden">
+                    {navLinks.map((link) => (
+                      <button
+                        key={link.label}
+                        type="button"
+                        onClick={() => {
+                          link.onClick();
+                          setIsCategoryMenuOpen(false);
+                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 hover:text-brand-600"
+                      >
+                        {link.label}
+                        {link.badge && (
+                          <span className="rounded bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white">
+                            {link.badge}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="px-4 pb-1 pt-2 text-xs font-medium text-slate-400 md:hidden">
+                    Categories
+                  </p>
                   {categories.length > 0 ? (
                     categories.map((cat) => (
                       <button
@@ -407,7 +431,7 @@ export const Header: React.FC = () => {
             </AnimatePresence>
           </div>
 
-          <div className="flex min-w-0 flex-1 items-stretch gap-6 self-stretch overflow-x-auto whitespace-nowrap text-sm font-medium text-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="hidden min-w-0 flex-1 items-stretch gap-6 self-stretch overflow-x-auto md:flex whitespace-nowrap text-sm font-medium text-slate-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {navLinks.map((link) => (
               <button
                 key={link.label}
